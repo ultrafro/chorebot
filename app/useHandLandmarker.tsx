@@ -20,6 +20,7 @@ export function useHandLandmarker() {
             "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
           delegate: "GPU",
         },
+        numHands: 2,
       });
       await landmarker?.setOptions({ runningMode: "VIDEO" });
       setHandLandmarker(landmarker);
