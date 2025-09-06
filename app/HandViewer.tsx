@@ -22,7 +22,11 @@ interface HandDetectionResult {
   handednesses: any[];
 }
 
-export default function HandViewer() {
+export default function HandViewer({
+  onHandsDetected,
+}: {
+  onHandsDetected?: (hands: HandDetectionResult[]) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const handLandmarker = useHandLandmarker();
@@ -156,7 +160,7 @@ export default function HandViewer() {
           {!webcamRunning && (
             <div className="w-full max-w-2xl mx-auto h-96 bg-gray-200 rounded-lg flex items-center justify-center">
               <div className="text-center">
-                <div className="text-6xl mb-4">👋</div>
+                <div className="text-6xl mb-4">👋🏿</div>
                 <button
                   onClick={startWebcam}
                   className="px-8 py-3 rounded-lg font-semibold text-white transition-all duration-200 bg-blue-500 hover:bg-blue-600 shadow-blue-200 shadow-lg hover:shadow-xl transform hover:scale-105"
