@@ -36,7 +36,7 @@ export default function RobotVisualizer({
       }}
     >
       <Canvas
-        camera={{ position: [10, 10, 10], fov: 60 }}
+        camera={{ position: [0, 5, 5], fov: 60 }}
         shadows
         style={{
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -130,18 +130,6 @@ function Scene({ currentHands }: { currentHands: BothHands }) {
 
       {/* Compass at origin */}
       <Compass />
-
-      {/* Two Robot Arms */}
-      <RobotArmVisualizer
-        position={[-2, 0, 0]}
-        handData={currentHands.left}
-        isLeft={true}
-      />
-      <RobotArmVisualizer
-        position={[2, 0, 0]}
-        handData={currentHands.right}
-        isLeft={false}
-      />
 
       {/* Hand Visualizers */}
       <HandVisualizer
