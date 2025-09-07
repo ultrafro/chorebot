@@ -25,6 +25,8 @@ export function HandVisualizer({
   const baseOpacity = handData.detected ? 0.95 : 0.6;
   const indicatorOpacity = handData.detected ? 0.85 : 0.5;
 
+  const showDebug = false;
+
   useFrame(() => {
     if (handRef.current) {
       if (handData.detected) {
@@ -104,16 +106,19 @@ export function HandVisualizer({
   return (
     <>
       <group ref={handRef} position={position}>
-        {/* Main hand sphere */}
-        <Sphere args={[0.12]}>
+        {/* Main hand rectangle - made thicker for visibility */}
+        <Box args={[0.24, 0.24, 0.08]}>
           <meshStandardMaterial
             color={color}
-            transparent
-            opacity={baseOpacity}
+            metalness={0.1}
+            roughness={0.3}
             emissive={color}
-            emissiveIntensity={handData.detected ? 0.4 : 0.15}
+            emissiveIntensity={handData.detected ? 0.8 : 0.5}
+            transparent={false}
+            depthWrite={true}
+            depthTest={true}
           />
-        </Sphere>
+        </Box>
 
         {/* Hand orientation indicator */}
         {/* <Cylinder args={[0.025, 0.025, 0.35, 8]} rotation={[Math.PI / 2, 0, 0]}>
@@ -126,119 +131,123 @@ export function HandVisualizer({
           />
         </Cylinder> */}
 
-        {/* Directional Indicators */}
-        {/* Positive X (Right) - Red Arrow */}
-        <group position={[0.25, 0, 0]}>
-          <Cylinder
-            args={[0.015, 0.015, 0.2, 8]}
-            rotation={[0, 0, Math.PI / 2]}
-          >
-            <meshStandardMaterial
-              color="red"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="red"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Arrow tip */}
-          <Cylinder
-            args={[0, 0.035, 0.08, 6]}
-            rotation={[0, 0, Math.PI / 2]}
-            position={[0.1, 0, 0]}
-          >
-            <meshStandardMaterial
-              color="red"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="red"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Letter X */}
-          <Text
-            position={[0.15, 0, 0]}
-            fontSize={0.05}
-            color="red"
-            anchorX="center"
-            anchorY="middle"
-          >
-            X
-          </Text>
-        </group>
+        {showDebug && (
+          <>
+            {/* Directional Indicators */}
+            {/* Positive X (Right) - Red Arrow */}
+            <group position={[0.25, 0, 0]}>
+              <Cylinder
+                args={[0.015, 0.015, 0.2, 8]}
+                rotation={[0, 0, Math.PI / 2]}
+              >
+                <meshStandardMaterial
+                  color="red"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="red"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Arrow tip */}
+              <Cylinder
+                args={[0, 0.035, 0.08, 6]}
+                rotation={[0, 0, Math.PI / 2]}
+                position={[0.1, 0, 0]}
+              >
+                <meshStandardMaterial
+                  color="red"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="red"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Letter X */}
+              <Text
+                position={[0.15, 0, 0]}
+                fontSize={0.05}
+                color="red"
+                anchorX="center"
+                anchorY="middle"
+              >
+                X
+              </Text>
+            </group>
 
-        {/* Positive Y (Up) - Green Arrow */}
-        <group position={[0, 0.25, 0]}>
-          <Cylinder args={[0.015, 0.015, 0.2, 8]}>
-            <meshStandardMaterial
-              color="lime"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="lime"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Arrow tip */}
-          <Cylinder args={[0, 0.035, 0.08, 6]} position={[0, 0.1, 0]}>
-            <meshStandardMaterial
-              color="lime"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="lime"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Letter Y */}
-          <Text
-            position={[0, 0.15, 0]}
-            fontSize={0.05}
-            color="lime"
-            anchorX="center"
-            anchorY="middle"
-          >
-            Y
-          </Text>
-        </group>
+            {/* Positive Y (Up) - Green Arrow */}
+            <group position={[0, 0.25, 0]}>
+              <Cylinder args={[0.015, 0.015, 0.2, 8]}>
+                <meshStandardMaterial
+                  color="lime"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="lime"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Arrow tip */}
+              <Cylinder args={[0, 0.035, 0.08, 6]} position={[0, 0.1, 0]}>
+                <meshStandardMaterial
+                  color="lime"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="lime"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Letter Y */}
+              <Text
+                position={[0, 0.15, 0]}
+                fontSize={0.05}
+                color="lime"
+                anchorX="center"
+                anchorY="middle"
+              >
+                Y
+              </Text>
+            </group>
 
-        {/* Positive Z (Forward) - Blue Arrow */}
-        <group position={[0, 0, 0.25]}>
-          <Cylinder
-            args={[0.015, 0.015, 0.2, 8]}
-            rotation={[Math.PI / 2, 0, 0]}
-          >
-            <meshStandardMaterial
-              color="cyan"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="cyan"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Arrow tip */}
-          <Cylinder
-            args={[0, 0.035, 0.08, 6]}
-            rotation={[Math.PI / 2, 0, 0]}
-            position={[0, 0, 0.1]}
-          >
-            <meshStandardMaterial
-              color="cyan"
-              transparent
-              opacity={indicatorOpacity * 0.8}
-              emissive="cyan"
-              emissiveIntensity={handData.detected ? 0.3 : 0.1}
-            />
-          </Cylinder>
-          {/* Letter Z */}
-          <Text
-            position={[0, 0, 0.15]}
-            fontSize={0.05}
-            color="cyan"
-            anchorX="center"
-            anchorY="middle"
-          >
-            Z
-          </Text>
-        </group>
+            {/* Positive Z (Forward) - Blue Arrow */}
+            <group position={[0, 0, 0.25]}>
+              <Cylinder
+                args={[0.015, 0.015, 0.2, 8]}
+                rotation={[Math.PI / 2, 0, 0]}
+              >
+                <meshStandardMaterial
+                  color="cyan"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="cyan"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Arrow tip */}
+              <Cylinder
+                args={[0, 0.035, 0.08, 6]}
+                rotation={[Math.PI / 2, 0, 0]}
+                position={[0, 0, 0.1]}
+              >
+                <meshStandardMaterial
+                  color="cyan"
+                  transparent
+                  opacity={indicatorOpacity * 0.8}
+                  emissive="cyan"
+                  emissiveIntensity={handData.detected ? 0.3 : 0.1}
+                />
+              </Cylinder>
+              {/* Letter Z */}
+              <Text
+                position={[0, 0, 0.15]}
+                fontSize={0.05}
+                color="cyan"
+                anchorX="center"
+                anchorY="middle"
+              >
+                Z
+              </Text>
+            </group>
+          </>
+        )}
       </group>
 
       {/* Gripper visualization */}
@@ -279,52 +288,62 @@ export function HandVisualizer({
         </group>
       </group>
 
-      {/* Debug Sphere for the Base - relative positioning */}
-      <Sphere
-        args={[0.025]}
-        position={[handData.base.x, handData.base.y, handData.base.z]}
-        ref={baseRef}
-      >
-        <meshStandardMaterial color="black" transparent />
-      </Sphere>
+      {showDebug && (
+        <>
+          {/* Debug Rectangle for the Base - relative positioning */}
+          <Box
+            args={[0.05, 0.05, 0.005]}
+            position={[handData.base.x, handData.base.y, handData.base.z]}
+            ref={baseRef}
+          >
+            <meshStandardMaterial
+              color="gray"
+              metalness={0.2}
+              roughness={0.4}
+              emissive="gray"
+              emissiveIntensity={0.2}
+            />
+          </Box>
 
-      {/* Debug Sphere for the Index Knuckle - relative positioning */}
-      <Sphere
-        ref={indexKnuckleRef}
-        args={[0.025]}
-        position={[
-          handData.indexKnuckle.x,
-          handData.indexKnuckle.y,
-          handData.indexKnuckle.z,
-        ]}
-      >
-        <meshStandardMaterial
-          color="blue"
-          transparent
-          opacity={baseOpacity}
-          emissive="blue"
-          emissiveIntensity={handData.detected ? 0.4 : 0.15}
-        />
-      </Sphere>
+          {/* Debug Rectangle for the Index Knuckle - relative positioning */}
+          <Box
+            ref={indexKnuckleRef}
+            args={[0.05, 0.05, 0.005]}
+            position={[
+              handData.indexKnuckle.x,
+              handData.indexKnuckle.y,
+              handData.indexKnuckle.z,
+            ]}
+          >
+            <meshStandardMaterial
+              color="blue"
+              metalness={0.1}
+              roughness={0.3}
+              emissive="blue"
+              emissiveIntensity={handData.detected ? 0.25 : 0.15}
+            />
+          </Box>
 
-      {/* Debug Sphere for the Pinky Knuckle - relative positioning */}
-      <Sphere
-        args={[0.025]}
-        ref={pinkyKnuckleRef}
-        position={[
-          handData.pinkyKnuckle.x,
-          handData.pinkyKnuckle.y,
-          handData.pinkyKnuckle.z,
-        ]}
-      >
-        <meshStandardMaterial
-          color="green"
-          transparent
-          opacity={baseOpacity}
-          emissive="green"
-          emissiveIntensity={handData.detected ? 0.4 : 0.15}
-        />
-      </Sphere>
+          {/* Debug Rectangle for the Pinky Knuckle - relative positioning */}
+          <Box
+            args={[0.05, 0.05, 0.005]}
+            ref={pinkyKnuckleRef}
+            position={[
+              handData.pinkyKnuckle.x,
+              handData.pinkyKnuckle.y,
+              handData.pinkyKnuckle.z,
+            ]}
+          >
+            <meshStandardMaterial
+              color="green"
+              metalness={0.1}
+              roughness={0.3}
+              emissive="green"
+              emissiveIntensity={handData.detected ? 0.25 : 0.15}
+            />
+          </Box>
+        </>
+      )}
     </>
   );
 }
