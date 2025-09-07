@@ -36,15 +36,15 @@ export default function RobotVisualizer({
       }}
     >
       <Canvas
-        camera={{ position: [0, 5, 5], fov: 60 }}
+        camera={{ position: [0, 4, 4], fov: 50 }}
         shadows
         style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(to bottom, #e6f3ff 0%, #cce7ff 100%)",
           pointerEvents: "auto",
         }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.2;
+          gl.toneMappingExposure = 0.8;
         }}
         // eventSource={document.getElementById("canvas-root") || document.body}
         // eventPrefix="client"
@@ -59,102 +59,103 @@ export default function RobotVisualizer({
 function Compass() {
   return (
     <>
-      {/* X-axis (Red) - pointing in positive X direction */}
+      {/* X-axis - pointing in positive X direction */}
       <Cylinder
-        args={[0.02, 0.02, 2, 8]}
-        position={[1, 0, 0]}
+        args={[0.01, 0.01, 1.5, 8]}
+        position={[0.75, 0, 0]}
         rotation={[0, 0, Math.PI / 2]}
       >
-        <meshStandardMaterial color="#ff0000" />
+        <meshStandardMaterial color="#9ca3af" />
       </Cylinder>
 
-      {/* Y-axis (Green) - pointing in positive Y direction */}
-      <Cylinder args={[0.02, 0.02, 2, 8]} position={[0, 1, 0]}>
-        <meshStandardMaterial color="#00ff00" />
+      {/* Y-axis - pointing in positive Y direction */}
+      <Cylinder args={[0.01, 0.01, 1.5, 8]} position={[0, 0.75, 0]}>
+        <meshStandardMaterial color="#6b7280" />
       </Cylinder>
 
-      {/* Z-axis (Blue) - pointing in positive Z direction */}
+      {/* Z-axis - pointing in positive Z direction */}
       <Cylinder
-        args={[0.02, 0.02, 2, 8]}
-        position={[0, 0, 1]}
+        args={[0.01, 0.01, 1.5, 8]}
+        position={[0, 0, 0.75]}
         rotation={[Math.PI / 2, 0, 0]}
       >
-        <meshStandardMaterial color="#0000ff" />
+        <meshStandardMaterial color="#3b82f6" />
       </Cylinder>
 
       {/* Origin marker */}
-      <Sphere args={[0.05]} position={[0, 0, 0]}>
-        <meshStandardMaterial color="#ffffff" />
+      <Sphere args={[0.03]} position={[0, 0, 0]}>
+        <meshStandardMaterial color="#e5e7eb" />
       </Sphere>
-
-      {/* Axis labels */}
-      <mesh position={[2.2, 0, 0]}>
-        <planeGeometry args={[0.3, 0.3]} />
-        <meshBasicMaterial color="#ff0000" transparent opacity={0.8} />
-      </mesh>
-      <mesh position={[0, 2.2, 0]}>
-        <planeGeometry args={[0.3, 0.3]} />
-        <meshBasicMaterial color="#00ff00" transparent opacity={0.8} />
-      </mesh>
-      <mesh position={[0, 0, 2.2]}>
-        <planeGeometry args={[0.3, 0.3]} />
-        <meshBasicMaterial color="#0000ff" transparent opacity={0.8} />
-      </mesh>
     </>
   );
+}
+
+// Grid Component for the ground
+function Grid() {
+  const gridSize = 10;
+  const divisions = 20;
+  const gridHelper = useMemo(() => {
+    const grid = new THREE.GridHelper(
+      gridSize,
+      divisions,
+      "#6b7280",
+      "#9ca3af"
+    );
+    grid.position.y = -1;
+    return grid;
+  }, []);
+
+  return <primitive object={gridHelper} />;
 }
 
 // Main Scene Component
 function Scene({ currentHands }: { currentHands: BothHands }) {
   return (
     <>
-      {/* Ambient lighting for calm atmosphere */}
-      <ambientLight intensity={0.4} color="#b8c6db" />
+      {/* Soft ambient lighting */}
+      <ambientLight intensity={0.6} color="#f8fafc" />
 
       {/* Main directional light */}
       <directionalLight
-        position={[10, 10, 5]}
-        intensity={0.8}
+        position={[8, 8, 5]}
+        intensity={0.5}
         color="#ffffff"
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
       />
 
-      {/* Soft fill light */}
+      {/* Subtle fill light */}
       <directionalLight
-        position={[-5, 5, -5]}
-        intensity={0.3}
-        color="#f0f4f8"
+        position={[-3, 3, -3]}
+        intensity={0.2}
+        color="#f1f5f9"
       />
+
+      {/* Grid ground */}
+      <Grid />
 
       {/* Compass at origin */}
       <Compass />
 
-      {/* Hand Visualizers */}
+      {/* Hand Visualizers with subtle colors */}
       <HandVisualizer
         handData={currentHands.left}
         position={[0, 0, 0]}
-        color="red"
+        color="#ef4444"
       />
       <HandVisualizer
         handData={currentHands.right}
         position={[0, 0, 0]}
-        color="blue"
+        color="#3b82f6"
       />
-
-      {/* Ground plane */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
-        <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#f7fafc" transparent opacity={0.8} />
-      </mesh>
 
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
-        minDistance={3}
-        maxDistance={15}
+        minDistance={2}
+        maxDistance={12}
         minPolarAngle={0}
         maxPolarAngle={Math.PI / 2}
         makeDefault
