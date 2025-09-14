@@ -3,6 +3,7 @@ import { useCamera } from "@/app/hooks/useCamera";
 import { RoomData } from "./roomUI.model";
 import { UsePeerJSResult } from "@/app/hooks/usePeerJS";
 import { useAuth } from "@/app/lib/auth";
+import { MediaConnection } from "peerjs";
 
 export default function HostView({
   roomData,
@@ -24,6 +25,21 @@ export default function HostView({
       videoRef.current.srcObject = camera.stream;
     }
   }, [camera.stream]);
+
+  // Handle incoming video calls from clients
+  useEffect(() => {
+    if (peerJS.mediaConnections.length > 0 && camera.stream) {
+      // Find calls that haven't been answered yet
+      const unansweredCalls = peerJS.mediaConnections.filter(
+        (call) => !call.open && call.peer !== peerJS.peerId
+      );
+
+      unansweredCalls.forEach((incomingCall) => {
+        console.log("Answering incoming call from client:", incomingCall.peer);
+        peerJS.answerCall(incomingCall, camera.stream || undefined);
+      });
+    }
+  }, [peerJS.mediaConnections, camera.stream, peerJS]);
 
   const handleMakeRoomReady = async () => {
     if (!user || !roomData) return;

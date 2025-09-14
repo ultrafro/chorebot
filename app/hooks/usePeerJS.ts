@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import Peer, { DataConnection } from "peerjs";
+import Peer, { DataConnection, MediaConnection } from "peerjs";
 
 export interface UsePeerJSResult {
   peer: Peer | null;
@@ -7,9 +7,15 @@ export interface UsePeerJSResult {
   isConnected: boolean;
   error: string | null;
   connections: DataConnection[];
+  mediaConnections: MediaConnection[];
   initializePeer: () => Promise<string>;
   destroyPeer: () => void;
   connect: (remotePeerId: string) => Promise<DataConnection | null>;
+  call: (
+    remotePeerId: string,
+    stream?: MediaStream
+  ) => Promise<MediaConnection | null>;
+  answerCall: (call: MediaConnection, stream?: MediaStream) => void;
 }
 
 export function usePeerJS(): UsePeerJSResult {
@@ -18,6 +24,9 @@ export function usePeerJS(): UsePeerJSResult {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connections, setConnections] = useState<DataConnection[]>([]);
+  const [mediaConnections, setMediaConnections] = useState<MediaConnection[]>(
+    []
+  );
   const initializingRef = useRef(false);
 
   const initializePeer = useCallback(async (): Promise<string> => {
@@ -87,6 +96,25 @@ export function usePeerJS(): UsePeerJSResult {
           });
         });
 
+        newPeer.on("call", (call: MediaConnection) => {
+          console.log("Incoming call from:", call.peer);
+          setMediaConnections((prev) => [...prev, call]);
+
+          call.on("close", () => {
+            console.log("Call closed with:", call.peer);
+            setMediaConnections((prev) =>
+              prev.filter((c) => c.peer !== call.peer)
+            );
+          });
+
+          call.on("error", (err: any) => {
+            console.error("Call error:", err);
+            setMediaConnections((prev) =>
+              prev.filter((c) => c.peer !== call.peer)
+            );
+          });
+        });
+
         newPeer.on("disconnected", () => {
           console.log("PeerJS disconnected");
           setIsConnected(false);
@@ -98,6 +126,7 @@ export function usePeerJS(): UsePeerJSResult {
           setPeer(null);
           setPeerId(null);
           setConnections([]);
+          setMediaConnections([]);
         });
 
         // Set a timeout for connection
@@ -127,6 +156,7 @@ export function usePeerJS(): UsePeerJSResult {
       setPeerId(null);
       setIsConnected(false);
       setConnections([]);
+      setMediaConnections([]);
       setError(null);
     }
     initializingRef.current = false;
@@ -176,6 +206,121 @@ export function usePeerJS(): UsePeerJSResult {
     [peer, isConnected]
   );
 
+  const call = useCallback(
+    async (
+      remotePeerId: string,
+      stream?: MediaStream
+    ): Promise<MediaConnection | null> => {
+      if (!peer || !isConnected) {
+        setError("Peer not initialized or not connected");
+        return null;
+      }
+
+      try {
+        console.log("Calling peer:", remotePeerId, "with stream:", !!stream);
+
+        // Create a fake audio/video stream if none provided
+        // This is needed for WebRTC to work properly - both sides need to exchange media
+        let callStream = stream;
+        if (!callStream) {
+          try {
+            // Create a fake video stream with a canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "black";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            const fakeVideoStream = canvas.captureStream(30);
+
+            // Create a fake audio context for audio stream
+            const audioContext = new AudioContext();
+            const destination = audioContext.createMediaStreamDestination();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            // Set gain to 0 to make it silent
+            gainNode.gain.value = 0;
+            oscillator.connect(gainNode);
+            gainNode.connect(destination);
+            oscillator.start();
+
+            const fakeAudioStream = destination.stream;
+
+            // Combine fake video and audio streams
+            callStream = new MediaStream([
+              ...fakeVideoStream.getVideoTracks(),
+              ...fakeAudioStream.getAudioTracks(),
+            ]);
+
+            console.log("Created fake media stream for call");
+          } catch (err) {
+            console.warn(
+              "Failed to create fake media stream, using empty stream:",
+              err
+            );
+            callStream = new MediaStream();
+          }
+        }
+
+        const call = peer.call(remotePeerId, callStream);
+
+        return new Promise<MediaConnection>((resolve, reject) => {
+          call.on("stream", (remoteStream) => {
+            console.log("Received stream from:", remotePeerId);
+            // Stream will be handled by the component
+          });
+
+          call.on("close", () => {
+            console.log("Call closed with:", remotePeerId);
+            setMediaConnections((prev) =>
+              prev.filter((c) => c.peer !== remotePeerId)
+            );
+          });
+
+          call.on("error", (err: any) => {
+            console.error("Call error:", err);
+            reject(err);
+          });
+
+          // Add to media connections immediately
+          setMediaConnections((prev) => [...prev, call]);
+          resolve(call);
+
+          // Set a timeout for call connection
+          setTimeout(() => {
+            if (call.open === false) {
+              reject(new Error("Call connection timeout"));
+            }
+          }, 10000);
+        });
+      } catch (err) {
+        setError(`Failed to call ${remotePeerId}: ${(err as Error).message}`);
+        return null;
+      }
+    },
+    [peer, isConnected]
+  );
+
+  const answerCall = useCallback(
+    (call: MediaConnection, stream?: MediaStream) => {
+      console.log("Answering call from:", call.peer, "with stream:", !!stream);
+
+      // Use the provided stream, or an empty MediaStream if none provided
+      // The host should always provide their camera stream when answering
+      call.answer(stream || new MediaStream());
+
+      call.on("stream", (remoteStream) => {
+        console.log("Received stream in answered call from:", call.peer);
+        // Stream will be handled by the component
+      });
+    },
+    []
+  );
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -191,8 +336,11 @@ export function usePeerJS(): UsePeerJSResult {
     isConnected,
     error,
     connections,
+    mediaConnections,
     initializePeer,
     destroyPeer,
     connect,
+    call,
+    answerCall,
   };
 }
