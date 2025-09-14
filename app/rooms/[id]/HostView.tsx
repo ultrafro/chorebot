@@ -242,80 +242,157 @@ export default function HostView({
   const isRoomReady = roomData.hostPeerId !== null;
 
   return (
-    <div className="max-w-4xl mx-auto h-full">
-      <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-6 h-full">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-foreground">
-            Host Control Panel
-          </h2>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  isRoomReady ? "bg-green-500" : "bg-yellow-500"
-                }`}
-              ></div>
-              <span className="text-sm text-foreground/70">
-                {isRoomReady ? "Ready for Control" : "Not Ready"}
-              </span>
-            </div>
-
-            {!isRoomReady ? (
-              <button
-                onClick={handleMakeRoomReady}
-                disabled={isInitializingStream}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isInitializingStream ? "Initializing..." : "Make Room Ready"}
-              </button>
-            ) : (
-              <button
-                onClick={handleEndStream}
-                disabled={isEndingStream}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isEndingStream ? "Ending..." : "End Stream"}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-          <div className="bg-background rounded-lg border border-foreground/10 p-4">
-            <h3 className="text-lg font-medium text-foreground mb-4">
-              Camera Feed
-            </h3>
-            <div className="aspect-video bg-foreground/5 rounded-lg flex items-center justify-center overflow-hidden">
-              {camera.stream ? (
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover rounded-lg"
-                />
+    <div className="h-full flex bg-background overflow-hidden">
+      {/* Left side - Big screen for camera feed */}
+      <div className="flex-1 p-6 min-h-0">
+        <div className="h-full bg-foreground/5 rounded-lg border border-foreground/10 p-6 flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-semibold text-foreground">
+              Host Camera Feed
+            </h2>
+            <div className="flex items-center space-x-4">
+              {!isRoomReady ? (
+                <button
+                  onClick={handleMakeRoomReady}
+                  disabled={isInitializingStream}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isInitializingStream ? "Initializing..." : "Make Room Ready"}
+                </button>
               ) : (
-                <p className="text-foreground/50">
-                  {isRoomReady
-                    ? "Camera preview will appear here"
-                    : 'Click "Make Room Ready" to start camera'}
-                </p>
+                <button
+                  onClick={handleEndStream}
+                  disabled={isEndingStream}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isEndingStream ? "Ending..." : "End Stream"}
+                </button>
               )}
             </div>
-            {camera.error && (
-              <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
-                Camera Error: {camera.error}
+          </div>
+
+          <div className="flex-1 bg-background rounded-lg border border-foreground/10 overflow-hidden">
+            {camera.stream ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-foreground/10 rounded-full flex items-center justify-center mb-4 mx-auto">
+                    <svg
+                      className="w-8 h-8 text-foreground/50"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-foreground/70 text-lg">
+                    {isRoomReady
+                      ? "Camera preview will appear here"
+                      : 'Click "Make Room Ready" to start camera'}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="bg-background rounded-lg border border-foreground/10 p-4">
-            <h3 className="text-lg font-medium text-foreground mb-4">
-              Client Connections
+          {camera.error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+              <strong>Camera Error:</strong> {camera.error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right side - Control panel column */}
+      <div className="w-80 p-6 border-l border-foreground/10 min-h-0">
+        <div className="h-full flex flex-col space-y-6 overflow-y-auto">
+          {/* Connection Status Section */}
+          <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-4">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Connection Status
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground/70">Room Status</span>
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isRoomReady ? "bg-green-500" : "bg-yellow-500"
+                    }`}
+                  ></div>
+                  <span className="text-sm">
+                    {isRoomReady ? "Ready for Control" : "Not Ready"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground/70">PeerJS</span>
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      peerJS.isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  ></div>
+                  <span className="text-sm">
+                    {peerJS.isConnected ? "Connected" : "Disconnected"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground/70">Camera</span>
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      camera.stream ? "bg-green-500" : "bg-gray-400"
+                    }`}
+                  ></div>
+                  <span className="text-sm">
+                    {camera.stream ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground/70">Video Calls</span>
+                <div className="flex items-center space-x-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      peerJS.mediaConnections.length > 0
+                        ? "bg-green-500"
+                        : "bg-gray-400"
+                    }`}
+                  ></div>
+                  <span className="text-sm">
+                    {peerJS.mediaConnections.length} active
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Client Approval/Disapproval Menu */}
+          <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-4 flex-1">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Client Management
+            </h3>
+            <div className="space-y-3">
               {roomData.currentControllingClientId ? (
-                <div className="p-3 bg-green-100 border border-green-300 rounded text-green-700 text-sm">
+                <div className="p-3 bg-green-100 border border-green-300 rounded-lg text-green-700 text-sm">
                   <div className="flex items-center justify-between">
                     <span>
                       Client {roomData.currentControllingClientId} is
@@ -327,44 +404,44 @@ export default function HostView({
                           roomData.currentControllingClientId!
                         )
                       }
-                      className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed ml-4"
+                      className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={isProcessingRequest}
                     >
-                      Revoke Control
+                      Revoke
                     </button>
                   </div>
                 </div>
               ) : (
                 <p className="text-foreground/70 text-sm">
-                  No clients connected
+                  No clients currently controlling
                 </p>
               )}
 
               {roomData.info?.requestingClientIds &&
                 Object.keys(roomData.info.requestingClientIds).length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-foreground mb-1">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">
                       Pending Requests:
                     </p>
                     {Object.keys(roomData.info.requestingClientIds).map(
                       (clientId) => (
                         <div
                           key={clientId}
-                          className="p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-700 text-sm mb-2"
+                          className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-yellow-700 text-sm"
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col space-y-2">
                             <span>Client {clientId} requesting control</span>
-                            <div className="flex gap-2 ml-4">
+                            <div className="flex gap-2">
                               <button
                                 onClick={() => handleApproveRequest(clientId)}
-                                className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={isProcessingRequest}
                               >
                                 Approve
                               </button>
                               <button
                                 onClick={() => handleDenyRequest(clientId)}
-                                className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={isProcessingRequest}
                               >
                                 Deny
@@ -376,6 +453,26 @@ export default function HostView({
                     )}
                   </div>
                 )}
+
+              {(!roomData.info?.requestingClientIds ||
+                Object.keys(roomData.info.requestingClientIds).length === 0) &&
+                !roomData.currentControllingClientId && (
+                  <p className="text-foreground/50 text-sm">
+                    No pending control requests
+                  </p>
+                )}
+            </div>
+          </div>
+
+          {/* Robot Control Preview Section */}
+          <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-4 flex-1">
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Robot Control Preview
+            </h3>
+            <div className="h-32 bg-background rounded-lg border border-foreground/10 flex items-center justify-center">
+              <p className="text-foreground/50 text-sm">
+                Robot control preview
+              </p>
             </div>
           </div>
         </div>
