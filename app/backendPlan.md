@@ -10,7 +10,7 @@ Backend Plan:
 - client polls server for request approval, which will return the host's peer id
 - when a call is finished, the host will generate a new peer-id, and inform the server
 
-rooms table {roomId, hostId, hostPeerId, currentControllingClientId, requestingIds}
+rooms table {roomId, hostId, hostPeerId, currentControllingClientId, requestingClientIds}
 
 /hostIsReadyForControl (hostId, roomId, peerId)
 check authenticity

@@ -2,6 +2,28 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Environment Setup
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```bash
+# Supabase Configuration (Backend - Server-side only)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+
+# Supabase Configuration (Frontend - Client-side)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+**Important:**
+
+- The `SUPABASE_SERVICE_ROLE_KEY` should be kept secret and only used server-side
+- The `NEXT_PUBLIC_SUPABASE_ANON_KEY` is safe for client-side use
+- Set up your Supabase project and run the SQL schema from `app/api/db/schema.sql`
+
+### Development Server
+
 First, run the development server:
 
 ```bash
@@ -15,6 +37,21 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Available Routes
+
+- **`/`** - Main application page
+- **`/host`** - Host dashboard for signing in and creating rooms
+- **`/test`** - API testing interface
+
+#### Host Dashboard (`/host`)
+
+The host page allows users to:
+
+1. Sign in or sign up using email authentication via Supabase
+2. Create new rooms and automatically become the host
+3. View their account information
+4. Get room IDs to share with clients
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
