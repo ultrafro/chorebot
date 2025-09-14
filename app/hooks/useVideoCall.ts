@@ -10,19 +10,27 @@ export function useVideoCall(
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const initiateVideoCall = useCallback(async () => {
-    if (!hostPeerId || !peerJS.peer) {
-      console.error("No host peer ID or PeerJS not initialized");
+    if (!hostPeerId || !peerJS.peer || !peerJS.isConnected) {
+      console.error("Cannot initiate call - missing requirements:", {
+        hostPeerId: !!hostPeerId,
+        peerExists: !!peerJS.peer,
+        peerConnected: peerJS.isConnected,
+      });
       return;
     }
 
     console.log("Initiating video call to host:", hostPeerId);
 
     let retryCount = 0;
-    const maxRetries = 3;
-    const retryDelay = 2000;
+    const maxRetries = 5; // Increased retries
+    const baseRetryDelay = 2000;
 
     const attemptCall = async (): Promise<void> => {
       try {
+        console.log(
+          `Call attempt ${retryCount + 1}/${maxRetries + 1} to host:`,
+          hostPeerId
+        );
         const call = await peerJS.call(hostPeerId);
         if (call) {
           setActiveCall(call);
@@ -46,10 +54,16 @@ export function useVideoCall(
             // If the call fails and we haven't exceeded retries, try again
             if (retryCount < maxRetries) {
               retryCount++;
+              const retryDelay = baseRetryDelay * retryCount; // Exponential backoff
               console.log(
-                `Retrying call (attempt ${retryCount}/${maxRetries}) in ${retryDelay}ms`
+                `Retrying call (attempt ${retryCount}/${maxRetries}) in ${retryDelay}ms due to error:`,
+                err.message || err
               );
               setTimeout(() => attemptCall(), retryDelay);
+            } else {
+              console.error(
+                "Maximum retry attempts reached. Call failed permanently."
+              );
             }
           });
         }
@@ -59,10 +73,16 @@ export function useVideoCall(
         // If the call fails and we haven't exceeded retries, try again
         if (retryCount < maxRetries) {
           retryCount++;
+          const retryDelay = baseRetryDelay * retryCount; // Exponential backoff
           console.log(
-            `Retrying call (attempt ${retryCount}/${maxRetries}) in ${retryDelay}ms`
+            `Retrying call (attempt ${retryCount}/${maxRetries}) in ${retryDelay}ms due to error:`,
+            (error as Error).message
           );
           setTimeout(() => attemptCall(), retryDelay);
+        } else {
+          console.error(
+            "Maximum retry attempts reached. Call failed permanently."
+          );
         }
       }
     };

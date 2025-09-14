@@ -35,6 +35,11 @@ export function useBasicRoomInfo(roomId: string, user: User | null) {
   }, [user, roomId]);
 
   useEffect(() => {
+    // Initial fetch
+    fetchRoomData();
+  }, [fetchRoomData]);
+
+  useEffect(() => {
     const isHost = roomData?.isHost;
     const interval = setInterval(
       () => {

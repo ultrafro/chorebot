@@ -69,16 +69,25 @@ export default function ClientView({
     }
   }, [remoteStream]);
 
-  // Handle video calling when client gains control
+  // Handle video calling when client gains control or when PeerJS becomes ready
   useEffect(() => {
-    if (isInControl && roomData.hostPeerId && peerJS.peer && !activeCall) {
-      console.log("Client gained control, initiating video call...");
+    if (
+      isInControl &&
+      roomData.hostPeerId &&
+      peerJS.peer &&
+      peerJS.isConnected &&
+      !activeCall
+    ) {
+      console.log(
+        "Client has control and PeerJS is ready, initiating video call..."
+      );
       initiateVideoCall();
     }
   }, [
     isInControl,
     roomData.hostPeerId,
     peerJS.peer,
+    peerJS.isConnected,
     activeCall,
     initiateVideoCall,
   ]);
@@ -115,7 +124,7 @@ export default function ClientView({
                 ref={videoRef}
                 autoPlay
                 playsInline
-                muted={false}
+                muted={true}
                 className="w-full h-full object-cover"
               />
             ) : (

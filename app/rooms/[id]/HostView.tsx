@@ -28,7 +28,7 @@ export default function HostView({
 
   // Handle incoming video calls from clients
   useEffect(() => {
-    if (peerJS.mediaConnections.length > 0 && camera.stream) {
+    if (peerJS.mediaConnections.length > 0) {
       // Find calls that haven't been answered yet
       const unansweredCalls = peerJS.mediaConnections.filter(
         (call) => !call.open && call.peer !== peerJS.peerId
@@ -36,7 +36,16 @@ export default function HostView({
 
       unansweredCalls.forEach((incomingCall) => {
         console.log("Answering incoming call from client:", incomingCall.peer);
+        // Answer the call with camera stream if available, otherwise with empty stream
+        // The host should always answer calls to establish the connection
         peerJS.answerCall(incomingCall, camera.stream || undefined);
+
+        // If we don't have a camera stream yet, log a warning
+        if (!camera.stream) {
+          console.warn(
+            "Answered call without camera stream - client may not see video until stream is ready"
+          );
+        }
       });
     }
   }, [peerJS.mediaConnections, camera.stream, peerJS]);
@@ -69,6 +78,17 @@ export default function HostView({
         );
       }
 
+      // Wait a moment to ensure PeerJS is fully ready and camera stream is available
+      console.log("Waiting for host to be fully ready...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Verify that both PeerJS and camera are ready
+      if (!peerJS.isConnected || !camera.stream) {
+        throw new Error(
+          "Host not fully ready - PeerJS or camera not available"
+        );
+      }
+
       // Call the API to make the room ready
       const response = await fetch("/api/hostIsReadyForControl", {
         method: "POST",
@@ -87,6 +107,7 @@ export default function HostView({
 
       if (response.ok) {
         console.log("Room is now ready with peer ID:", peerId);
+        console.log("Host is ready to receive calls with camera stream");
       } else {
         throw new Error(result.error || "Failed to make room ready");
       }
