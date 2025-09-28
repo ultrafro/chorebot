@@ -9,10 +9,17 @@
 [x] make host page
 [x] make webrtc connection work between control client and host page
 [x] display 3d display of detected on the host page
-[ ] figure out IK of host
-[ ] figure out connectivity of robot to host
+[x] figure out IK of host
+[x] figure out connectivity of robot to host
 [ ] figure out webcam broadcasting on host
 [ ] show host webcam broadcasting on the client
+
+[ ] connect test page on host directly to robot
+[ ] build second robot
+[ ] make multirobot work from test page
+[ ] improve mouse control
+[ ] add keyboard control
+[ ] add ipad control?
 
 [ ] do dropout ux for the host
 [ ] do dropout ux for the client
@@ -20,8 +27,9 @@
 [ ] do better obfuscation for clients
 [ ] add names for clients
 [ ] make host change peer id on room changes
-[ ] do interpolation on the host side
-[ ] do bounds checking on the host side
-[ ] do test page for host, or find a way to test
+[x] do interpolation on the host side
+[x] do bounds checking on the host side
+[x] do test page for host, or find a way to test
 
 [ ] improve hand tracking
+[ ] improve IK calibration

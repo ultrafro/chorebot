@@ -442,6 +442,10 @@ def list_serial_devices(auto_forward: bool = True) -> List[Tuple[str, str, str]]
     Returns:
         List of tuples containing (device_path, description, hardware_id)
     """
+    import time
+    scan_start = time.time()
+    logger.info("🔍 Starting serial device scanning...")
+    
     if not SERIAL_AVAILABLE:
         logger.error("pyserial not installed. Install with: uv add pyserial")
         return []
@@ -454,18 +458,21 @@ def list_serial_devices(auto_forward: bool = True) -> List[Tuple[str, str, str]]
         
         # Auto-forward robot devices from Windows if requested
         if auto_forward:
+            forward_start = time.time()
             logger.info("🔄 Attempting to auto-forward robot devices from Windows...")
             forwarded_devices = auto_forward_robot_devices()
+            logger.info(f"✅ Auto-forwarding completed in {time.time() - forward_start:.3f}s")
             if forwarded_devices:
                 logger.info(f"✅ Forwarded {len(forwarded_devices)} device(s) to WSL")
                 # Wait a moment for devices to be available
-                import time
                 time.sleep(2)
             else:
                 logger.info("No robot devices found to forward")
     
     try:
         # Primary method: pyserial
+        pyserial_start = time.time()
+        logger.info("📡 Scanning devices using pyserial...")
         ports = serial.tools.list_ports.comports()
         for port in ports:
             devices.append((
@@ -473,23 +480,70 @@ def list_serial_devices(auto_forward: bool = True) -> List[Tuple[str, str, str]]
                 port.description or "Unknown device", 
                 port.hwid or "Unknown hardware ID"
             ))
+        logger.info(f"✅ Pyserial scanning completed in {time.time() - pyserial_start:.3f}s, found {len(devices)} devices")
         
         # Enhanced detection for WSL/Linux
         if is_wsl and not devices:
+            alt_start = time.time()
             logger.info("🔍 No devices found via pyserial, trying alternative methods...")
             devices.extend(_scan_devices_alternative())
+            logger.info(f"✅ Alternative device scanning completed in {time.time() - alt_start:.3f}s")
         
         # Sort by device path for consistent ordering
         devices.sort(key=lambda x: x[0])
         
-        if is_wsl and not devices:
-            logger.warning("⚠️  WSL detected but no USB devices found.")
-            logger.warning("   This is common in WSL - USB devices need to be forwarded from Windows.")
-            logger.warning("   Consider using USB/IP or running on Windows directly.")
+        # Enhanced error reporting when no devices found
+        if not devices:
+            logger.error("="*80)
+            logger.error("❌ NO SERIAL DEVICES FOUND")
+            logger.error("="*80)
+            logger.error("")
+            logger.error("🔍 DIAGNOSTIC INFORMATION:")
+            
+            if is_wsl:
+                logger.error("🐧 WSL Environment Detected")
+                logger.error("   USB devices need to be forwarded from Windows to WSL")
+                logger.error("")
+                logger.error("💡 SOLUTIONS FOR WSL:")
+                logger.error("   1. Run: uv run robot-server --scan-and-forward")
+                logger.error("   2. Run: uv run robot-server --show-commands")
+                logger.error("   3. Run: uv run robot-server --diagnose-usb")
+                logger.error("")
+                logger.error("🔧 WSL USB FORWARDING SOLUTIONS:")
+                logger.error("   🚀 EASY: Double-click forward_usb_devices.bat (run as Administrator)")
+                logger.error("   📖 GUIDE: See USB_FORWARDING_GUIDE.md for detailed instructions")
+                logger.error("")
+                logger.error("🔧 MANUAL WSL USB FORWARDING:")
+                logger.error("   On Windows (PowerShell as Administrator):")
+                logger.error("   1. Install usbipd: winget install usbipd")
+                logger.error("   2. List devices: usbipd list")
+                logger.error("   3. Bind robot device: usbipd bind --busid <BUSID>")
+                logger.error("   Then in WSL:")
+                logger.error("   4. Attach device: usbipd attach --wsl --busid <BUSID>")
+                logger.error("   5. Check devices: ls -l /dev/tty*")
+            else:
+                logger.error("🐧 Linux Environment Detected")
+                logger.error("")
+                logger.error("💡 SOLUTIONS FOR LINUX:")
+                logger.error("   1. Check if robot is connected and powered on")
+                logger.error("   2. Check USB cable connection")
+                logger.error("   3. Check device permissions: ls -l /dev/tty*")
+                logger.error("   4. Fix permissions: sudo chmod 666 /dev/ttyUSB* /dev/ttyACM*")
+                logger.error("   5. Check if device is recognized: dmesg | tail -20")
+            
+            logger.error("")
+            logger.error("🔧 TROUBLESHOOTING STEPS:")
+            logger.error("1. Make sure your robot is connected and powered on")
+            logger.error("2. Check USB cable connection")
+            logger.error("3. Try unplugging and reconnecting the USB cable")
+            logger.error("4. Check if the device appears in system logs")
+            logger.error("5. Try running: uv run robot-server --diagnose-usb")
+            logger.error("="*80)
         
     except Exception as e:
         logger.error(f"Error scanning for serial devices: {e}")
-        
+    
+    logger.info(f"🏁 Serial device scanning completed in {time.time() - scan_start:.3f}s, found {len(devices)} total devices")
     return devices
 
 
@@ -716,21 +770,27 @@ def diagnose_wsl_usb_issues() -> None:
     
     if is_wsl:
         print("\n📋 WSL USB Troubleshooting Steps:")
-        print("1. Install USB/IP on Windows:")
-        print("   - Download from: https://github.com/cezanne/usbip-win")
-        print("   - Or use: winget install usbipd")
+        print("1. Install USB/IP on Windows (PowerShell as Administrator):")
+        print("   - Run: winget install usbipd")
+        print("   - Or download from: https://github.com/cezanne/usbip-win")
         print()
         print("2. Forward USB device from Windows to WSL:")
-        print("   - List devices: usbipd wsl list")
-        print("   - Attach device: usbipd wsl attach --busid <BUSID>")
+        print("   On Windows (PowerShell as Administrator):")
+        print("   - List devices: usbipd list")
+        print("   - Bind robot device: usbipd bind --busid <BUSID>")
+        print("   Then in WSL:")
+        print("   - Attach device: usbipd attach --wsl --busid <BUSID>")
+        print("   - Check devices: ls -l /dev/tty*")
         print()
-        print("3. Alternative: Use Windows directly")
-        print("   - Run the robot server in Windows PowerShell/CMD")
-        print("   - Or use Windows Terminal with WSL integration")
-        print()
-        print("4. Check device permissions in WSL:")
+        print("3. Check device permissions in WSL:")
         print("   - ls -l /dev/tty*")
-        print("   - sudo chmod 666 /dev/ttyUSB* (if devices exist)")
+        print("   - sudo chmod 666 /dev/ttyUSB* /dev/ttyACM* (if devices exist)")
+        print()
+        print("4. Use automated tools:")
+        print("   - Double-click forward_usb_devices.bat (Windows)")
+        print("   - uv run robot-server --scan-and-forward")
+        print("   - uv run robot-server --show-commands")
+        print("   - uv run robot-server --diagnose-usb")
         print()
     
     # Check system information

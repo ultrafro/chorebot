@@ -11,7 +11,7 @@ export interface RobotWebSocketResult {
   reconnect: () => void;
 }
 
-const DEFAULT_WS_URL = "ws://localhost:8765";
+const DEFAULT_WS_URL = "ws://localhost:9000";
 const RECONNECT_DELAY = 3000; // 3 seconds
 const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -143,12 +143,33 @@ export function useRobotWebSocket(
   const sendHandData = useCallback((hands: BothHands) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
-        const message = {
+        // Send pose control for right hand (primary control hand)
+        if (hands.right.detected) {
+          const rightHand = hands.right;
+          const poseMessage = {
+            type: "pose_control",
+            pose: {
+              x: rightHand.position.x,
+              y: rightHand.position.y,
+              z: rightHand.position.z,
+              qx: rightHand.orientation.x,
+              qy: rightHand.orientation.y,
+              qz: rightHand.orientation.z,
+              qw: rightHand.orientation.w,
+              gripper: rightHand.open,
+              smooth: true,
+            },
+          };
+          wsRef.current.send(JSON.stringify(poseMessage));
+        }
+
+        // Also send the original hand_data format for compatibility
+        const handDataMessage = {
           type: "hand_data",
           timestamp: Date.now(),
           hands: hands,
         };
-        wsRef.current.send(JSON.stringify(message));
+        wsRef.current.send(JSON.stringify(handDataMessage));
       } catch (error) {
         console.error("Error sending hand data:", error);
         setLastError("Failed to send hand data to robot server");
