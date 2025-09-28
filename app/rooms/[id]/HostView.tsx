@@ -329,7 +329,7 @@ export default function HostView({
 
               <div className="text-xs text-foreground/60">
                 <p>
-                  <strong>Default:</strong> ws://localhost:8765
+                  <strong>Default:</strong> ws://localhost:9000
                 </p>
                 <p>
                   Make sure your Python robot server is running and listening on

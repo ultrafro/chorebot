@@ -36,6 +36,10 @@ class IKRobotController:
             use_simulation: If True, only simulate movements without actual robot
             workspace_limits: Dict with keys 'x', 'y', 'z' and values as (min, max) tuples
         """
+        import time
+        init_start = time.time()
+        logger.info("🔧 Starting IKRobotController initialization...")
+        
         self.use_simulation = use_simulation
         self.robot_port = robot_port
         self.is_connected = False
@@ -43,11 +47,11 @@ class IKRobotController:
         self.current_joint_positions = np.zeros(6)  # 5 arm joints + gripper
         self.target_pose = np.eye(4)
         
-        # Set default workspace limits (in meters)
+        # Set default workspace limits (in meters) - based on measured coordinate space
         self.workspace_limits = workspace_limits or {
-            'x': (-0.3, 0.3),
-            'y': (-0.3, 0.3), 
-            'z': (0.05, 0.4)
+            'x': (-0.109, 0.262),  # backward to forward
+            'y': (-0.07, 0.15),    # right to left  
+            'z': (0.069, 0.385)    # down to up
         }
         
         # Initialize robot components
@@ -59,20 +63,36 @@ class IKRobotController:
         self.max_angular_velocity = 1.0  # rad/s
         self.interpolation_steps = 10
         
+        logger.info(f"📋 Basic initialization completed in {time.time() - init_start:.3f}s")
+        
         if not use_simulation:
+            real_robot_start = time.time()
+            logger.info("🤖 Initializing real robot components...")
             self._initialize_real_robot(urdf_path, robot_config_path, robot_port)
+            logger.info(f"✅ Real robot initialization completed in {time.time() - real_robot_start:.3f}s")
         else:
-            logger.info("IK Robot Controller initialized in simulation mode")
+            logger.info("🎮 IK Robot Controller initialized in simulation mode")
+        
+        logger.info(f"🏁 IKRobotController initialization completed in {time.time() - init_start:.3f}s")
     
     def _initialize_real_robot(self, urdf_path: str, robot_config_path: str, robot_port: str):
         """Initialize real robot connection and kinematics."""
+        import time
+        real_robot_start = time.time()
+        logger.info("🤖 Starting real robot initialization...")
+        
         try:
             # Import LeRobot components
+            import_start = time.time()
+            logger.info("📦 Importing LeRobot components...")
             from lerobot.robots.so101_follower.so101_follower import SO101Follower
             from lerobot.robots.so101_follower.config_so101_follower import SO101FollowerConfig
             from lerobot.model.kinematics import RobotKinematics
+            logger.info(f"✅ LeRobot imports completed in {time.time() - import_start:.3f}s")
             
             # Load robot configuration
+            config_start = time.time()
+            logger.info("📋 Loading robot configuration...")
             if robot_config_path:
                 from pathlib import Path
                 import shutil
@@ -110,11 +130,17 @@ class IKRobotController:
                 )
                 logger.warning("⚠️ No calibration file provided, using default configuration")
             
+            logger.info(f"✅ Robot configuration completed in {time.time() - config_start:.3f}s")
+            
             # Initialize robot
+            robot_init_start = time.time()
             logger.info(f"🔧 Initializing SO101Follower with config: port={config.port}, id={config.id}, calibration_dir={config.calibration_dir}")
             self.robot = SO101Follower(config)
+            logger.info(f"✅ SO101Follower initialization completed in {time.time() - robot_init_start:.3f}s")
             
             # Initialize kinematics solver
+            kinematics_start = time.time()
+            logger.info("🧮 Initializing kinematics solver...")
             if urdf_path:
                 joint_names = ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"]
                 self.kinematics = RobotKinematics(
@@ -122,8 +148,11 @@ class IKRobotController:
                     target_frame_name="gripper_frame_link",
                     joint_names=joint_names
                 )
+                logger.info(f"✅ Kinematics solver initialized in {time.time() - kinematics_start:.3f}s")
+            else:
+                logger.warning("⚠️ No URDF path provided, skipping kinematics initialization")
             
-            logger.info("IK Robot Controller initialized with real robot")
+            logger.info(f"🏁 Real robot initialization completed in {time.time() - real_robot_start:.3f}s")
             
         except ImportError as e:
             logger.warning(f"LeRobot not available, falling back to simulation: {e}")
@@ -134,34 +163,72 @@ class IKRobotController:
     
     def connect(self):
         """Connect to the robot."""
+        import time
+        connect_start = time.time()
+        logger.info("🔌 Starting robot connection...")
+        
         if self.use_simulation:
             self.is_connected = True
-            logger.info("Connected to simulated robot")
+            logger.info("🎮 Connected to simulated robot")
+            return
+        
+        if not self.robot:
+            logger.error("❌ Robot not initialized - cannot connect")
+            self.is_connected = False
             return
         
         try:
-            if self.robot:
-                self.robot.connect()
-                self.is_connected = True
-                # Get initial joint positions
-                obs = self.robot.get_observation()
-                self.current_joint_positions = np.array([
-                    obs.get("shoulder_pan.pos", 0),
-                    obs.get("shoulder_lift.pos", 0),
-                    obs.get("elbow_flex.pos", 0),
-                    obs.get("wrist_flex.pos", 0),
-                    obs.get("wrist_roll.pos", 0),
-                    obs.get("gripper.pos", 50)
-                ])
-                
-                # Compute initial pose using forward kinematics
-                if self.kinematics:
-                    self.current_pose = self.kinematics.forward_kinematics(self.current_joint_positions[:5])
-                
-                logger.info("Connected to real robot")
+            robot_connect_start = time.time()
+            logger.info(f"🔌 Connecting to physical robot on port: {self.robot_port}")
+            logger.info("   This may take a few seconds...")
+            
+            # Attempt connection with timeout handling
+            self.robot.connect()
+            logger.info(f"✅ Physical robot connection completed in {time.time() - robot_connect_start:.3f}s")
+            
+            self.is_connected = True
+            
+            # Get initial joint positions
+            obs_start = time.time()
+            logger.info("📊 Getting initial robot observation...")
+            obs = self.robot.get_observation()
+            logger.info(f"✅ Robot observation completed in {time.time() - obs_start:.3f}s")
+            
+            self.current_joint_positions = np.array([
+                obs.get("shoulder_pan.pos", 0),
+                obs.get("shoulder_lift.pos", 0),
+                obs.get("elbow_flex.pos", 0),
+                obs.get("wrist_flex.pos", 0),
+                obs.get("wrist_roll.pos", 0),
+                obs.get("gripper.pos", 50)
+            ])
+            
+            # Compute initial pose using forward kinematics
+            if self.kinematics:
+                fk_start = time.time()
+                logger.info("🧮 Computing initial pose using forward kinematics...")
+                self.current_pose = self.kinematics.forward_kinematics(self.current_joint_positions[:5])
+                logger.info(f"✅ Forward kinematics completed in {time.time() - fk_start:.3f}s")
+            
+            logger.info(f"🏁 Robot connection completed in {time.time() - connect_start:.3f}s")
+            
         except Exception as e:
-            logger.error(f"Failed to connect to robot: {e}")
+            logger.error(f"❌ Failed to connect to robot: {e}")
+            logger.error("")
+            logger.error("🔧 CONNECTION FAILURE DETAILS:")
+            logger.error(f"   Port: {self.robot_port}")
+            logger.error(f"   Error: {str(e)}")
+            logger.error("")
+            logger.error("💡 COMMON SOLUTIONS:")
+            logger.error("   1. Check if robot is powered on and connected")
+            logger.error("   2. Verify the correct port is being used")
+            logger.error("   3. Check port permissions: ls -l /dev/tty*")
+            logger.error("   4. Fix permissions: sudo chmod 666 /dev/ttyUSB* /dev/ttyACM*")
+            logger.error("   5. If in WSL, ensure USB device is forwarded from Windows")
+            logger.error("   6. Try running: uv run robot-server --diagnose-usb")
+            logger.error("   7. Try running: uv run robot-server --scan-and-forward")
             self.is_connected = False
+            raise  # Re-raise the exception so caller can handle it
     
     def disconnect(self):
         """Disconnect from the robot."""
@@ -340,7 +407,7 @@ class IKRobotController:
         
         # Check workspace limits
         if not self.check_workspace_limits(x, y, z):
-            logger.warning(f"Target position ({x:.3f}, {y:.3f}, {z:.3f}) outside workspace limits")
+            logger.warning(f"Target position ({x:.3f}, {y:.3f}, {z:.3f}) outside workspace limits: ({self.workspace_limits['x'][0]:.3f}, {self.workspace_limits['x'][1]:.3f}, {self.workspace_limits['y'][0]:.3f}, {self.workspace_limits['y'][1]:.3f}, {self.workspace_limits['z'][0]:.3f}, {self.workspace_limits['z'][1]:.3f})")
             return False
         
         # Convert to transformation matrix
@@ -431,12 +498,15 @@ class IKRobotController:
     
     def home_position(self):
         """Move robot to home position."""
-        # Default home pose (adjust as needed)
-        self.move_to_pose(0.2, 0.0, 0.2, 0.0, 0.0, 0.0, 1.0, gripper_position=50.0)
-        logger.info("Moved to home position")
+        # Default home pose - centered within the measured workspace bounds
+        home_x = (self.workspace_limits['x'][0] + self.workspace_limits['x'][1]) / 2  # 0.0765
+        home_y = (self.workspace_limits['y'][0] + self.workspace_limits['y'][1]) / 2  # 0.04
+        home_z = (self.workspace_limits['z'][0] + self.workspace_limits['z'][1]) / 2  # 0.227
+        self.move_to_pose(home_x, home_y, home_z, 0.0, 0.0, 0.0, 1.0, gripper_position=50.0)
+        logger.info(f"Moved to home position: ({home_x:.3f}, {home_y:.3f}, {home_z:.3f})")
         
-    def move_in_circle(self, center_x: float = 0.2, center_y: float = 0.0, center_z: float = 0.2,
-                      radius: float = 0.05, duration_seconds: float = 2.0) -> None:
+    def move_in_circle(self, center_x: float = 0.0765, center_y: float = 0.04, center_z: float = 0.227,
+                      radius: float = 0.03, duration_seconds: float = 2.0) -> None:
         """
         Move the end effector in a continuous circle for debugging purposes.
         

@@ -251,9 +251,9 @@ Move robot to home position:
 
 ```python
 workspace_limits = {
-    'x': (-0.3, 0.3),  # ±30cm
-    'y': (-0.3, 0.3),  # ±30cm
-    'z': (0.05, 0.4)   # 5cm to 40cm height
+    'x': (-0.109, 0.262),  # backward to forward (measured)
+    'y': (-0.07, 0.15),    # right to left (measured)
+    'z': (0.069, 0.385)    # down to up (measured)
 }
 ```
 
@@ -461,9 +461,9 @@ For real robot operation, create robot configuration files in the robots directo
 ```python
 # Custom workspace for your specific setup
 workspace_limits = {
-    'x': (-0.4, 0.4),
-    'y': (-0.2, 0.2),
-    'z': (0.1, 0.5)
+    'x': (-0.109, 0.262),  # backward to forward (measured)
+    'y': (-0.07, 0.15),    # right to left (measured)
+    'z': (0.069, 0.385)    # down to up (measured)
 }
 ```
 

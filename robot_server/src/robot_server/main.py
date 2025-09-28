@@ -41,17 +41,25 @@ logger = logging.getLogger(__name__)
 
 def load_existing_config() -> Optional[Dict]:
     """Load existing config.json if it exists."""
+    import time
+    config_start = time.time()
+    logger.info("📋 Checking for existing configuration...")
+    
     config_path = Path("config.json")
     if config_path.exists():
         try:
+            logger.info(f"📄 Found config file: {config_path}")
             with open(config_path, 'r') as f:
                 config = json.load(f)
-            logger.info(f"Found existing configuration: {config_path}")
+            logger.info(f"✅ Configuration loaded successfully in {time.time() - config_start:.3f}s")
+            logger.info(f"📋 Found existing configuration: {config_path}")
             return config
         except Exception as e:
-            logger.error(f"Failed to load config.json: {e}")
+            logger.error(f"❌ Failed to load config.json: {e}")
             return None
-    return None
+    else:
+        logger.info(f"📄 No existing config file found at {config_path}")
+        return None
 
 
 def ask_user_to_reuse_config(config: Dict) -> bool:
@@ -84,10 +92,15 @@ def ask_user_to_reuse_config(config: Dict) -> bool:
 
 def get_robot_folders() -> List[Path]:
     """Get all robot folders from ./robot_server/robots directory."""
+    import time
+    folder_start = time.time()
+    logger.info("📁 Scanning for robot folders...")
+    
     robots_dir = Path("src/robot_server/robots")
+    logger.info(f"📂 Looking in directory: {robots_dir}")
     
     if not robots_dir.exists():
-        logger.error(f"Robots directory not found: {robots_dir}")
+        logger.error(f"❌ Robots directory not found: {robots_dir}")
         return []
     
     robot_folders = []
@@ -99,9 +112,11 @@ def get_robot_folders() -> List[Path]:
             
             if urdf_file.exists() and calibration_file.exists():
                 robot_folders.append(item)
+                logger.info(f"✅ Found valid robot folder: {item.name}")
             else:
-                logger.warning(f"Skipping {item.name}: missing calib.urdf or calibration.json")
+                logger.warning(f"⚠️ Skipping {item.name}: missing calib.urdf or calibration.json")
     
+    logger.info(f"🏁 Robot folder scanning completed in {time.time() - folder_start:.3f}s, found {len(robot_folders)} folders")
     return robot_folders
 
 
@@ -237,8 +252,115 @@ def start_server_with_config(config: Dict) -> None:
         logger.error(f"❌ Server error: {e}")
 
 
+def validate_robot_port(robot_port: str) -> bool:
+    """Validate that the robot port exists and is accessible."""
+    import os
+    import time
+    
+    logger.info(f"🔍 Validating robot port: {robot_port}")
+    
+    # Check if port exists
+    if not os.path.exists(robot_port):
+        logger.error(f"❌ Port {robot_port} does not exist")
+        return False
+    
+    # Check if port is accessible
+    if not os.access(robot_port, os.R_OK | os.W_OK):
+        logger.error(f"❌ Port {robot_port} is not accessible (permission denied)")
+        logger.error(f"   Try running: sudo chmod 666 {robot_port}")
+        return False
+    
+    logger.info(f"✅ Port {robot_port} exists and is accessible")
+    return True
+
+
+def diagnose_connection_failure(robot_port: str, error: Exception) -> None:
+    """Provide detailed diagnostics when robot connection fails."""
+    import os
+    import glob
+    
+    logger.error("="*80)
+    logger.error("🔧 ROBOT CONNECTION FAILURE DIAGNOSTICS")
+    logger.error("="*80)
+    
+    logger.error(f"❌ Failed to connect to robot on port: {robot_port}")
+    logger.error(f"❌ Error: {error}")
+    logger.error("")
+    
+    # Check what ports are actually available
+    logger.error("📱 AVAILABLE SERIAL PORTS:")
+    try:
+        import serial.tools.list_ports
+        ports = serial.tools.list_ports.comports()
+        if ports:
+            for i, port in enumerate(ports, 1):
+                logger.error(f"  {i}. {port.device}")
+                logger.error(f"     Description: {port.description or 'Unknown'}")
+                logger.error(f"     Hardware ID: {port.hwid or 'Unknown'}")
+                logger.error("")
+        else:
+            logger.error("  No serial ports found via pyserial")
+    except Exception as e:
+        logger.error(f"  Error scanning ports: {e}")
+    
+    # Check common device paths
+    logger.error("🔍 CHECKING COMMON DEVICE PATHS:")
+    common_paths = ['/dev/ttyUSB*', '/dev/ttyACM*', '/dev/ttyS*']
+    for pattern in common_paths:
+        devices = glob.glob(pattern)
+        if devices:
+            logger.error(f"  {pattern}: {len(devices)} devices found")
+            for device in devices:
+                exists = "✅" if os.path.exists(device) else "❌"
+                accessible = "✅" if os.access(device, os.R_OK | os.W_OK) else "❌"
+                logger.error(f"    {exists} {device} (accessible: {accessible})")
+        else:
+            logger.error(f"  {pattern}: No devices found")
+    
+    # Check if we're in WSL
+    try:
+        with open('/proc/version', 'r') as f:
+            version_info = f.read().lower()
+            if 'microsoft' in version_info or 'wsl' in version_info:
+                logger.error("")
+                logger.error("🐧 WSL ENVIRONMENT DETECTED")
+                logger.error("   USB devices need to be forwarded from Windows to WSL")
+                logger.error("")
+                logger.error("💡 WSL USB FORWARDING SOLUTIONS:")
+                logger.error("   1. Run: uv run robot-server --scan-and-forward")
+                logger.error("   2. Run: uv run robot-server --show-commands")
+                logger.error("   3. Run: uv run robot-server --diagnose-usb")
+                logger.error("")
+                logger.error("🔧 WSL USB FORWARDING SOLUTIONS:")
+                logger.error("   🚀 EASY: Double-click forward_usb_devices.bat (run as Administrator)")
+                logger.error("   📖 GUIDE: See USB_FORWARDING_GUIDE.md for detailed instructions")
+                logger.error("")
+                logger.error("🔧 MANUAL WSL USB FORWARDING STEPS:")
+                logger.error("   On Windows (PowerShell as Administrator):")
+                logger.error("   1. Install usbipd: winget install usbipd")
+                logger.error("   2. List devices: usbipd list")
+                logger.error("   3. Bind robot device: usbipd bind --busid <BUSID>")
+                logger.error("   Then in WSL:")
+                logger.error("   4. Attach device: usbipd attach --wsl --busid <BUSID>")
+                logger.error("   5. Check devices: ls -l /dev/tty*")
+    except:
+        pass
+    
+    logger.error("")
+    logger.error("🔧 TROUBLESHOOTING STEPS:")
+    logger.error("1. Make sure your robot is connected and powered on")
+    logger.error("2. Check if the port exists: ls -l /dev/tty*")
+    logger.error("3. Check port permissions: ls -l /dev/ttyUSB* /dev/ttyACM*")
+    logger.error("4. Fix permissions if needed: sudo chmod 666 /dev/ttyUSB* /dev/ttyACM*")
+    logger.error("5. Try running: uv run robot-server --diagnose-usb")
+    logger.error("="*80)
+
+
 def run_justmove_mode(config: Dict) -> None:
     """Run the robot in continuous circular motion for debugging."""
+    import time
+    justmove_start = time.time()
+    
     robot_configs = config.get('robots', [])
     
     if not robot_configs:
@@ -252,19 +374,37 @@ def run_justmove_mode(config: Dict) -> None:
     logger.info(f"📁 URDF: {robot_config['urdf']}")
     logger.info(f"🔌 Device: {robot_config['device']}")
     
+    # Validate port before attempting connection
+    if not validate_robot_port(robot_config['device']):
+        logger.error("❌ Port validation failed. Cannot proceed with JustMove mode.")
+        diagnose_connection_failure(robot_config['device'], Exception("Port validation failed"))
+        return
+    
     # Initialize IK controller
+    ik_init_start = time.time()
+    logger.info("🔧 Initializing IK controller...")
     ik_controller = IKRobotController(
         urdf_path=robot_config['urdf'],
         robot_config_path=robot_config['calibration'],
         robot_port=robot_config['device'],
         use_simulation=False
     )
+    logger.info(f"✅ IK controller initialized in {time.time() - ik_init_start:.3f}s")
     
     # Connect to robot
-    ik_controller.connect()
+    connect_start = time.time()
+    logger.info("🔌 Connecting to robot...")
+    try:
+        ik_controller.connect()
+        logger.info(f"✅ Robot connection completed in {time.time() - connect_start:.3f}s")
+    except Exception as e:
+        logger.error(f"❌ Robot connection failed in {time.time() - connect_start:.3f}s")
+        diagnose_connection_failure(robot_config['device'], e)
+        return
     
     if not ik_controller.is_connected:
         logger.error("❌ Failed to connect to robot. Cannot run JustMove mode.")
+        diagnose_connection_failure(robot_config['device'], Exception("Connection failed - robot not connected"))
         return
     
     logger.info("🔄 Starting continuous circular motion. Press Ctrl+C to stop.")
@@ -291,28 +431,55 @@ def run_justmove_mode(config: Dict) -> None:
 
 def create_minimal_config_for_justmove() -> Optional[Dict]:
     """Create a minimal configuration for JustMove mode if none exists."""
+    import time
+    config_start = time.time()
     logger.info("🔧 Creating minimal configuration for JustMove mode...")
     
-    # Scan for devices
+    # Scan for devices with enhanced error reporting
+    device_scan_start = time.time()
+    logger.info("🔍 Scanning for serial devices...")
     devices = list_serial_devices(auto_forward=True)
+    logger.info(f"✅ Device scanning completed in {time.time() - device_scan_start:.3f}s")
+    
     if not devices:
         logger.error("❌ No serial devices found. Please connect your robot and try again.")
+        logger.error("")
+        logger.error("🔧 TROUBLESHOOTING STEPS:")
+        logger.error("1. Make sure your robot is connected and powered on")
+        logger.error("2. Check USB cable connection")
+        logger.error("3. Try running: uv run robot-server --diagnose-usb")
+        logger.error("4. If in WSL, try: uv run robot-server --scan-and-forward")
         return None
     
     display_devices(devices)
     
+    # Validate the first device before using it
+    first_device = devices[0][0]
+    logger.info(f"🔍 Validating selected device: {first_device}")
+    if not validate_robot_port(first_device):
+        logger.error(f"❌ Selected device {first_device} is not valid")
+        logger.error("Available devices:")
+        for i, (device, desc, hwid) in enumerate(devices):
+            logger.error(f"  {i+1}. {device} - {desc}")
+        return None
+    
     # Get robot folders
+    folder_scan_start = time.time()
+    logger.info("📁 Scanning for robot folders...")
     robot_folders = get_robot_folders()
+    logger.info(f"✅ Robot folder scanning completed in {time.time() - folder_scan_start:.3f}s")
+    
     if not robot_folders:
         logger.error("❌ No robot folders found.")
         return None
     
     # Use the first robot folder and first device for quick setup
     robot_folder = robot_folders[0]
-    device = devices[0][0]  # First device port
+    device = first_device
     
     logger.info(f"✅ Auto-selected robot: {robot_folder.name}")
     logger.info(f"✅ Auto-selected device: {device}")
+    logger.info(f"✅ Device validation passed")
     
     robot_config = {
         'folder': str(robot_folder),
@@ -341,7 +508,12 @@ def create_minimal_config_for_justmove() -> Optional[Dict]:
 
 def main():
     """Main entry point."""
+    import time
+    start_time = time.time()
+    logger.info("🚀 Starting TeleTable Robot Server...")
+    
     # Parse command line arguments
+    logger.info("📋 Parsing command line arguments...")
     parser = argparse.ArgumentParser(
         description="TeleTable Robot Server",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -405,11 +577,13 @@ Examples:
     )
     
     args = parser.parse_args()
+    logger.info(f"✅ Command line arguments parsed in {time.time() - start_time:.3f}s")
     
     # Enable debug logging if requested
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logging.getLogger('robot_server').setLevel(logging.DEBUG)
+        logger.info("🐛 Debug logging enabled")
     
     if args.diagnose_usb:
         diagnose_wsl_usb_issues()
@@ -434,9 +608,12 @@ Examples:
             print("3. Then run this command in WSL:")
             print("   uv run robot-server --scan-and-forward")
             print()
-            print("💡 Alternative: Run directly on Windows")
-            print("   cd C:\\side\\teletable\\robot_server")
-            print("   uv run robot-server")
+            print("💡 Additional WSL commands:")
+            print("   uv run robot-server --diagnose-usb")
+            print("   uv run robot-server --show-commands")
+            print()
+            print("🚀 EASY OPTION: Double-click forward_usb_devices.bat")
+            print("📖 GUIDE: See USB_FORWARDING_GUIDE.md")
             print("="*60)
         else:
             logger.info("No robot devices found on Windows")
@@ -495,18 +672,29 @@ Examples:
         return
     
     if args.justmove:
+        justmove_start = time.time()
         logger.info("🔄 TeleTable Robot Server - JustMove Debug Mode")
+        logger.info(f"⏱️ JustMove mode started at {time.time() - start_time:.3f}s from program start")
         
         # Try to load existing config first
+        config_start = time.time()
+        logger.info("📋 Loading existing configuration...")
         config = load_existing_config()
+        logger.info(f"✅ Config loading completed in {time.time() - config_start:.3f}s")
         
         if not config:
+            create_config_start = time.time()
+            logger.info("🔧 Creating minimal configuration for JustMove mode...")
             config = create_minimal_config_for_justmove()
+            logger.info(f"✅ Config creation completed in {time.time() - create_config_start:.3f}s")
             if not config:
                 logger.error("❌ Failed to create configuration for JustMove mode")
                 return
         
+        run_justmove_start = time.time()
+        logger.info(f"🤖 Starting JustMove mode at {time.time() - start_time:.3f}s from program start")
         run_justmove_mode(config)
+        logger.info(f"🏁 JustMove mode completed in {time.time() - justmove_start:.3f}s")
         return
     
     # Normal operation mode
