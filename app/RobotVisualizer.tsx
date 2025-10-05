@@ -358,7 +358,7 @@ function Scene({
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
-        minDistance={2}
+        minDistance={0.1}
         maxDistance={12}
         minPolarAngle={0}
         maxPolarAngle={Math.PI / 2}
