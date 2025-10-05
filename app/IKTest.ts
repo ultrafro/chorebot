@@ -1,4 +1,4 @@
-import { Solver, Joint, Link, Goal, DOF } from "closed-chain-ik-tiny";
+import { Solver, Joint, Link, Goal, DOF } from "closed-chain-ik";
 import { Object3D, Quaternion, Vector3 } from "three";
 export class IKTest {
   goal: Goal;
@@ -31,7 +31,11 @@ export class IKTest {
     this.link2.addChild(this.joint2);
     this.joint2.addChild(this.link3);
 
+    this.link1.setWorldPosition(0, 0, 0);
+
     this.joint1.setWorldPosition(0, 0, 0);
+    this.link2.setWorldPosition(0, 1.0, 0);
+
     this.joint2.setWorldPosition(0, 1.0, 0);
     this.link3.setWorldPosition(0, 2.0, 0);
 
@@ -219,7 +223,7 @@ export class IKTest {
   update() {
     const start = performance.now();
     this.solver.solve();
-    this.link1.updateMatrixWorld(true);
+    this.link1.updateMatrixWorld();
     const end = performance.now();
     //console.log(`IK solved in ${end - start}ms`);
   }

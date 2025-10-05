@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.15",
@@ -14,20 +15,22 @@
     "@supabase/supabase-js": "^2.57.4",
     "@types/peerjs": "^1.1.0",
     "@types/three": "^0.180.0",
-    "closed-chain-ik-tiny": "^0.0.7",
+    "closed-chain-ik": "^0.0.3",
     "nanoid": "^5.1.5",
     "next": "15.5.2",
     "peerjs": "^1.5.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "three": "^0.180.0",
-    "three-ik": "^0.1.0"
+    "three-ik": "^0.1.0",
+    "urdf-loader": "^0.12.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
