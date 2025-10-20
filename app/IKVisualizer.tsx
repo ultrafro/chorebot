@@ -67,16 +67,17 @@ export default function IKVisualizer({
     // );
 
     if (IKRobotClass) {
+      // IKRobotClass.shouldVisualize = true;
       IKRobotClass?.update();
-      const ikRobotLinkTransforms = IKRobotClass?.getLinkTransforms();
-      const ikRobotJointTransforms = IKRobotClass?.getJointTransforms();
+      // const ikRobotLinkTransforms = IKRobotClass?.getLinkTransforms();
+      // const ikRobotJointTransforms = IKRobotClass?.getJointTransforms();
 
-      drawIKVisualizers(
-        ikRobotLinkTransforms,
-        ikRobotJointTransforms,
-        ikRobotLinkVisualizersRef.current,
-        ikRobotJointVisualizersRef.current
-      );
+      // drawIKVisualizers(
+      //   ikRobotLinkTransforms,
+      //   ikRobotJointTransforms,
+      //   ikRobotLinkVisualizersRef.current,
+      //   ikRobotJointVisualizersRef.current
+      // );
     }
 
     // const jointValues = ikTestRef.current.getJointValues();
@@ -107,8 +108,6 @@ export default function IKVisualizer({
 
         const newIKRobot = new IKRobot(
           scene as unknown as Scene,
-          jointVisualizersRef.current!,
-          linkVisualizersRef.current!,
           robot,
           ikRobot
         );

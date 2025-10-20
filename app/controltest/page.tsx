@@ -1,0 +1,74 @@
+"use client";
+import { useCallback, useState, useEffect, useMemo } from "react";
+import RobotVisualizer from "../RobotVisualizer";
+import {
+  BothHands,
+  DefaultLeftHandDetection,
+  DefaultRightHandDetection,
+} from "../teletable.model";
+import { useRobotWebSocket } from "../hooks/useRobotWebSocket";
+import ControlPageControlPanel from "./ControlPageControlPanel";
+
+export default function ControlTest() {
+  const currentHands = useMemo<BothHands>(
+    () => ({
+      left: JSON.parse(JSON.stringify(DefaultLeftHandDetection)),
+      right: JSON.parse(JSON.stringify(DefaultRightHandDetection)),
+    }),
+    []
+  );
+
+  // Initialize robot WebSocket connection
+  const robotWS = useRobotWebSocket();
+
+  console.log("robotWS.isConnected", robotWS.isConnected);
+
+  // // Send hand data to robot server at regular intervals when connected
+  // useEffect(() => {
+  //   if (!robotWS.isConnected) {
+  //     return;
+  //   }
+
+  //   const interval = setInterval(() => {
+  //     robotWS.sendHandData([0, 0, 0, 0, 0, 0]);
+  //   }, 100); // Send data every 100ms (10 times per second)
+
+  //   return () => clearInterval(interval);
+  // }, [robotWS.isConnected, robotWS, currentHands]);
+
+  const handleJointValuesUpdate = useCallback(
+    (robotId: string, jointValues: number[]) => {
+      //console.log("robotWS.isConnected", robotWS.isConnected);
+      if (!robotWS.isConnected) {
+        return;
+      }
+      //console.log("Joint values for", robotId, ":", jointValues);
+      robotWS.sendHandData(robotId, [...jointValues, 20]);
+    },
+    [robotWS.isConnected, robotWS.sendHandData]
+  );
+
+  return (
+    <div className="h-screen flex bg-background overflow-hidden">
+      {/* Left side - Robot Visualizer */}
+      <div className="flex-1 p-6 min-h-0">
+        <div className="h-full bg-foreground/5 rounded-lg border border-foreground/10 p-6 flex flex-col">
+          <h2 className="text-2xl font-semibold text-foreground mb-6">
+            Robot Control Test
+          </h2>
+          <div className="flex-1 relative">
+            <RobotVisualizer
+              currentHands={currentHands}
+              onJointValuesUpdate={handleJointValuesUpdate}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="w-80 p-6 border-l border-foreground/10 min-h-0">
+        <div className="h-full flex flex-col space-y-6 overflow-y-auto">
+          <ControlPageControlPanel robotWS={robotWS} />
+        </div>
+      </div>
+    </div>
+  );
+}

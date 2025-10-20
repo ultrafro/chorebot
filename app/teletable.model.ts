@@ -1,3 +1,5 @@
+import { Vector3 } from "three";
+
 export type HandDetection = {
   position: { x: number; y: number; z: number };
   orientation: { x: number; y: number; z: number; w: number };
@@ -15,8 +17,11 @@ export type BothHands = {
   right: HandDetection;
 };
 
+export const LeftArmBasePosition = new Vector3(-1, 0, 0);
+export const RightArmBasePosition = new Vector3(1, 0, 0);
+
 export const DefaultLeftHandDetection: HandDetection = {
-  position: { x: -1, y: 0, z: 0 },
+  position: { x: 0, y: 0, z: -0.3 },
   orientation: { x: 0, y: 0, z: 0, w: 1 },
   open: 0,
   detected: false,
@@ -28,7 +33,7 @@ export const DefaultLeftHandDetection: HandDetection = {
 };
 
 export const DefaultRightHandDetection: HandDetection = {
-  position: { x: 1, y: 0, z: 0 },
+  position: { x: 0, y: 0, z: -0.3 },
   orientation: { x: 0, y: 0, z: 0, w: 1 },
   open: 0,
   detected: false,
