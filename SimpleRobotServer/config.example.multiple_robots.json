@@ -1,0 +1,19 @@
+{
+  "robots": [
+    {
+      "robot_id": "left",
+      "robot_port": "COM3",
+      "calibration_file": "C:\\side\\teletable\\SimpleRobotServer\\robots\\left\\calibration.json"
+    },
+    {
+      "robot_id": "right",
+      "robot_port": "COM4",
+      "calibration_file": "C:\\side\\teletable\\SimpleRobotServer\\robots\\right\\calibration.json"
+    }
+  ],
+  "server": {
+    "host": "localhost",
+    "port": 9000
+  }
+}
+

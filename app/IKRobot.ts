@@ -1,6 +1,7 @@
 import { Scene, Group, Vector3, Quaternion, Object3D } from "three";
 import { URDFRobot, URDFVisual } from "urdf-loader";
 import { DOF, Goal, Joint, Link, setUrdfFromIK, Solver } from "closed-chain-ik";
+import { drawIKVisualizers } from "./drawIKVisualizers";
 
 export class IKRobot {
   scene: Scene;
@@ -8,26 +9,42 @@ export class IKRobot {
   linkVisualizerGroup: Group;
   urdfRobot: URDFRobot;
   ikRobot: Link | Joint;
-  gripperLink: Link;
+  endLink: Link;
+  gripperJoint: Joint;
+  wristJoint: Joint;
+  pitchJoint: Joint;
   skeletonList: (Link | Joint)[];
   visualSkeletonList: URDFVisual[];
 
   goal: Goal;
+  wristGoal: Goal;
+  pitchGoal: Goal;
+  gripperGoal: Goal;
+  shouldVisualize: boolean = false;
 
   solver: Solver;
+  onJointValuesUpdate?: (jointValues: number[]) => void;
 
   constructor(
     scene: Scene,
-    jointVisualizerGroup: Group,
-    linkVisualizerGroup: Group,
     urdfRobot: URDFRobot,
-    ikRobot: Link | Joint
+    ikRobot: Link | Joint,
+    onJointValuesUpdate?: (jointValues: number[]) => void
   ) {
     this.goal = new Goal();
+    this.wristGoal = new Goal();
+    this.pitchGoal = new Goal();
+    this.gripperGoal = new Goal();
+
     this.scene = scene;
-    this.jointVisualizerGroup = jointVisualizerGroup;
-    this.linkVisualizerGroup = linkVisualizerGroup;
     this.urdfRobot = urdfRobot;
+    this.onJointValuesUpdate = onJointValuesUpdate;
+
+    this.jointVisualizerGroup = new Group();
+    this.linkVisualizerGroup = new Group();
+
+    scene.add(this.jointVisualizerGroup);
+    scene.add(this.linkVisualizerGroup);
 
     // this.ikRobot = ikRobot.children[0] as Link;
     this.ikRobot = ikRobot;
@@ -58,10 +75,23 @@ export class IKRobot {
     this.visualSkeletonList = [];
     // this.walkRobotTree(this.urdfRobot, this.visualSkeletonList);
     console.log(this.skeletonList);
-    this.gripperLink = this.skeletonList.find(
+    this.endLink = this.skeletonList.find(
       (link) => link.name === "gripper_frame_link"
     ) as Link;
-    console.log("gripper link: ", this.gripperLink);
+    console.log("end link: ", this.endLink);
+
+    this.wristJoint = this.skeletonList.find(
+      (link) => link.name === "wrist_roll"
+    ) as Joint;
+    // this.pitchJoint = (
+    //   this.skeletonList.find((link) => link.name === "wrist_link") as Link
+    // ).children[0] as Joint;
+    this.pitchJoint = this.skeletonList.find(
+      (link) => link.name === "wrist_flex"
+    ) as Joint;
+    this.gripperJoint = this.skeletonList.find(
+      (link) => link.name === "gripper"
+    ) as Joint;
 
     //loop through the skeleton list, and set the DOF of each joint to be DOF.X
     // for (const joint of this.skeletonList) {
@@ -72,14 +102,45 @@ export class IKRobot {
 
     //this.goal.setGoalDoF(DOF.X, DOF.Y, DOF.Z, DOF.EX, DOF.EY, DOF.EZ);
     this.goal.setGoalDoF(DOF.X, DOF.Y, DOF.Z);
-    this.gripperLink.getWorldPosition(
-      this.goal.position as unknown as number[]
-    );
-    this.gripperLink.getWorldQuaternion(
-      this.goal.quaternion as unknown as number[]
-    );
 
-    this.goal.makeClosure(this.gripperLink);
+    this.wristJoint.setDoF(DOF.EZ);
+    this.pitchJoint.setDoF(DOF.EZ);
+    this.gripperJoint.setDoF(DOF.EZ);
+
+    // this.wristGoal.setGoalDoF(DOF.EZ);
+    // this.pitchGoal.setGoalDoF(DOF.EZ);
+    // this.gripperGoal.setGoalDoF(DOF.EZ);
+
+    this.endLink.getWorldPosition(this.goal.position as unknown as number[]);
+    // this.gripperLink.getWorldQuaternion(
+    //   this.goal.quaternion as unknown as number[]
+    // );
+
+    // this.wristLink.getWorldPosition(
+    //   this.wristGoal.position as unknown as number[]
+    // );
+    // this.wristLink.getWorldQuaternion(
+    //   this.wristGoal.quaternion as unknown as number[]
+    // );
+
+    // this.pitchLink.getWorldPosition(
+    //   this.pitchGoal.position as unknown as number[]
+    // );
+    // this.pitchLink.getWorldQuaternion(
+    //   this.pitchGoal.quaternion as unknown as number[]
+    // );
+
+    // this.gripperLink.getWorldPosition(
+    //   this.gripperGoal.position as unknown as number[]
+    // );
+    // this.gripperLink.getWorldQuaternion(
+    //   this.gripperGoal.quaternion as unknown as number[]
+    // );
+
+    this.goal.makeClosure(this.endLink);
+    // this.wristGoal.makeClosure(this.wristLink);
+    // this.pitchGoal.makeClosure(this.pitchLink);
+    // this.gripperGoal.makeClosure(this.gripperLink);
 
     this.solver = new Solver(this.ikRobot);
     this.solver.maxIterations = 10;
@@ -100,14 +161,35 @@ export class IKRobot {
     }
   }
 
-  setGoalTransform(position: Vector3, quaternion: Quaternion) {
+  setGoalTransform(
+    position: Vector3,
+    pitch: number,
+    roll: number,
+    gripper: number
+  ) {
     this.goal.setPosition(position.x, position.y, position.z);
-    this.goal.setQuaternion(
-      quaternion.x,
-      quaternion.y,
-      quaternion.z,
-      quaternion.w
-    );
+    // this.wristGoal.setTargetValue(DOF.EZ, roll);
+    // this.pitchGoal.setTargetValue(DOF.EZ, pitch);
+    // this.gripperGoal.setTargetValue(DOF.EZ, gripper);
+
+    // this.wristJoint.setTargetValue(DOF.EZ, roll);
+    // this.pitchJoint.setTargetValue(DOF.EZ, pitch);
+    // this.gripperJoint.setTargetValue(DOF.EZ, gripper);
+
+    this.wristJoint.setDoFValue(DOF.EZ, (roll * Math.PI) / 180);
+    this.pitchJoint.setDoFValue(DOF.EZ, (pitch * Math.PI) / 180);
+    this.gripperJoint.setDoFValue(DOF.EZ, (gripper * Math.PI) / 180);
+    // this.endLink.setTargetValue(DOF.EZ, gripper);
+  }
+
+  setBaseTransform(position: Vector3) {
+    this.ikRobot.setWorldPosition(position.x, position.y, position.z);
+    // this.ikRobot.setWorldQuaternion(
+    //   quaternion.x,
+    //   quaternion.y,
+    //   quaternion.z,
+    //   quaternion.w
+    // );
   }
 
   lastTime = 0;
@@ -119,16 +201,37 @@ export class IKRobot {
 
     setUrdfFromIK(this.urdfRobot, this.ikRobot as Link);
 
+    const jointValues = this.getJointValues();
+    if (this.onJointValuesUpdate) {
+      this.onJointValuesUpdate(jointValues);
+    }
+
+    if (this.shouldVisualize) {
+      drawIKVisualizers(
+        this.getLinkTransforms(),
+        this.getJointTransforms(),
+        this.linkVisualizerGroup,
+        this.jointVisualizerGroup
+      );
+    }
+
     const now = performance.now();
     if (now - this.lastTime > 1000) {
       this.lastTime = now;
-      //loop through ik values, if it is a joint with DOF, print the dof value
-      for (const element of this.skeletonList) {
-        if (element instanceof Joint && element.dof.length > 0) {
-          console.log(((element as any).dofValues[5] * 180) / Math.PI);
-        }
+      const jointValues = this.getJointValues();
+      //console.log(jointValues);
+    }
+  }
+
+  getJointValues() {
+    //loop through ik values, if it is a joint with DOF, print the dof value
+    const jointValues: number[] = [];
+    for (const element of this.skeletonList) {
+      if (element instanceof Joint && element.dof.length > 0) {
+        jointValues.push(((element as any).dofValues[5] * 180) / Math.PI);
       }
     }
+    return jointValues.slice(0, -1);
   }
 
   getJointTransforms() {

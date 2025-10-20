@@ -5,7 +5,7 @@ export interface RobotWebSocketResult {
   isConnected: boolean;
   isConnecting: boolean;
   lastError: string | null;
-  sendHandData: (hands: BothHands) => void;
+  sendHandData: (id: string, joints: number[]) => void;
   connect: () => void;
   disconnect: () => void;
   reconnect: () => void;
@@ -140,36 +140,16 @@ export function useRobotWebSocket(
     setTimeout(() => connect(), 100);
   }, [disconnect, connect]);
 
-  const sendHandData = useCallback((hands: BothHands) => {
+  const sendHandData = useCallback((id: string, joints: number[]) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       try {
-        // Send pose control for right hand (primary control hand)
-        if (hands.right.detected) {
-          const rightHand = hands.right;
-          const poseMessage = {
-            type: "pose_control",
-            pose: {
-              x: rightHand.position.x,
-              y: rightHand.position.y,
-              z: rightHand.position.z,
-              qx: rightHand.orientation.x,
-              qy: rightHand.orientation.y,
-              qz: rightHand.orientation.z,
-              qw: rightHand.orientation.w,
-              gripper: rightHand.open,
-              smooth: true,
-            },
-          };
-          wsRef.current.send(JSON.stringify(poseMessage));
-        }
-
-        // Also send the original hand_data format for compatibility
-        const handDataMessage = {
-          type: "hand_data",
-          timestamp: Date.now(),
-          hands: hands,
+        // Send joint control command with robot_id
+        const jointControlMessage = {
+          type: "joint_control",
+          robot_id: id,
+          joints: joints,
         };
-        wsRef.current.send(JSON.stringify(handDataMessage));
+        wsRef.current.send(JSON.stringify(jointControlMessage));
       } catch (error) {
         console.error("Error sending hand data:", error);
         setLastError("Failed to send hand data to robot server");
@@ -187,6 +167,8 @@ export function useRobotWebSocket(
       }
     };
   }, [clearReconnectTimeout]);
+
+  console.log("isConnected", isConnected);
 
   return {
     isConnected,

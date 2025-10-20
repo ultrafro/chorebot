@@ -14,12 +14,11 @@
 [ ] figure out webcam broadcasting on host
 [ ] show host webcam broadcasting on the client
 
-[ ] connect test page on host directly to robot
+[x] add wrist control
+[x] add gripper control
+[ ] connect control test page to host page
 [ ] build second robot
 [ ] make multirobot work from test page
-[ ] improve mouse control
-[ ] add keyboard control
-[ ] add ipad control?
 
 [ ] do dropout ux for the host
 [ ] do dropout ux for the client
