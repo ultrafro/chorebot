@@ -227,7 +227,7 @@ export class IKRobot {
         this.gripperJoint,
       ];
       for (let i = 0; i < order.length; i++) {
-        order[i].setDoFValue(DOF.EZ, this.directValues[i]);
+        order[i].setDoFValue(DOF.EZ, (this.directValues[i] * Math.PI) / 180);
       }
     } else {
       const start = performance.now();
