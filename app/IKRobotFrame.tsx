@@ -16,12 +16,16 @@ export default function IKRobotFrame({
   basePosition,
   remotelyControlled,
   onJointValuesUpdate,
+  directMode,
+  directValues,
 }: {
   currentState: DataFrame;
   handId: string;
   basePosition: Vector3;
   remotelyControlled: boolean;
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
+  directMode?: boolean;
+  directValues?: number[];
 }) {
   const handPosition = useRef(new Vector3(0, 0, -0.3));
   const handQuaternion = useRef(new Quaternion(0, 0, 0, 1));
@@ -38,14 +42,18 @@ export default function IKRobotFrame({
         goalPosition={handPosition.current}
         goalOtherValues={handOtherValues.current}
         onJointValuesUpdate={(jointValues) => {
-          if (remotelyControlled) {
+          if (remotelyControlled || directMode) {
             return;
           }
           //console.log("Joint values for", handId, ":", jointValues);
           onJointValuesUpdate?.(handId, jointValues);
         }}
-        useDirectValues={remotelyControlled}
-        directValues={currentState.joints}
+        useDirectValues={remotelyControlled || directMode || false}
+        directValues={
+          directMode && directValues
+            ? directValues.map((deg) => (deg * Math.PI) / 180)
+            : currentState.joints
+        }
       />
       {/* <ControlPointVisualizer handData={handData} color="#ef4444" /> */}
 

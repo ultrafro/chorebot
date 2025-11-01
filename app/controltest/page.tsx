@@ -11,19 +11,33 @@ import { useRobotWebSocket } from "../hooks/useRobotWebSocket";
 import ControlPageControlPanel from "./ControlPageControlPanel";
 
 export default function ControlTest() {
+  const [directMode, setDirectMode] = useState(false);
+  const [directValues, setDirectValues] = useState([0, 0, 0, 0, 0, 0]);
+
   const currentState = useMemo<Record<string, DataFrame>>(
     () => ({
       left: {
-        joints: [0, 0, 0, 0, 0, 0],
+        joints: directValues,
         type: "SO101",
       },
       right: {
-        joints: [0, 0, 0, 0, 0, 0],
+        joints: directValues,
         type: "SO101",
       },
     }),
-    []
+    [directValues]
   );
+
+  useEffect(() => {
+    if (!directMode) {
+      return;
+    }
+
+    for (let i = 0; i < directValues.length; i++) {
+      currentState.left.joints[i] = directValues[i];
+      currentState.right.joints[i] = directValues[i];
+    }
+  }, [directValues, directMode]);
 
   // Initialize robot WebSocket connection
   const robotWS = useRobotWebSocket();
@@ -32,6 +46,7 @@ export default function ControlTest() {
 
   const handleJointValuesUpdate = useCallback(
     (robotId: string, jointValues: number[]) => {
+      console.log("jointValues", jointValues);
       //console.log("robotWS.isConnected", robotWS.isConnected);
       if (!robotWS.isConnected) {
         return;
@@ -41,6 +56,14 @@ export default function ControlTest() {
     },
     [robotWS.isConnected, robotWS.sendHandData]
   );
+
+  // Send direct values to robots when in direct mode
+  useEffect(() => {
+    if (directMode && robotWS.isConnected) {
+      robotWS.sendHandData("left", [...directValues]);
+      robotWS.sendHandData("right", [...directValues]);
+    }
+  }, [directMode, directValues, robotWS.isConnected, robotWS.sendHandData]);
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">
@@ -53,7 +76,7 @@ export default function ControlTest() {
           <div className="flex-1 relative">
             <RobotVisualizer
               currentState={currentState}
-              remotelyControlled={false}
+              remotelyControlled={directMode}
               onJointValuesUpdate={handleJointValuesUpdate}
             />
           </div>
@@ -61,7 +84,13 @@ export default function ControlTest() {
       </div>
       <div className="w-80 p-6 border-l border-foreground/10 min-h-0">
         <div className="h-full flex flex-col space-y-6 overflow-y-auto">
-          <ControlPageControlPanel robotWS={robotWS} />
+          <ControlPageControlPanel
+            robotWS={robotWS}
+            directMode={directMode}
+            setDirectMode={setDirectMode}
+            directValues={directValues}
+            setDirectValues={setDirectValues}
+          />
         </div>
       </div>
     </div>
