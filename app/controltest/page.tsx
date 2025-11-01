@@ -3,6 +3,7 @@ import { useCallback, useState, useEffect, useMemo } from "react";
 import RobotVisualizer from "../RobotVisualizer";
 import {
   BothHands,
+  DataFrame,
   DefaultLeftHandDetection,
   DefaultRightHandDetection,
 } from "../teletable.model";
@@ -10,13 +11,27 @@ import { useRobotWebSocket } from "../hooks/useRobotWebSocket";
 import ControlPageControlPanel from "./ControlPageControlPanel";
 
 export default function ControlTest() {
-  const currentHands = useMemo<BothHands>(
+  const currentState = useMemo<Record<string, DataFrame>>(
     () => ({
-      left: JSON.parse(JSON.stringify(DefaultLeftHandDetection)),
-      right: JSON.parse(JSON.stringify(DefaultRightHandDetection)),
+      left: {
+        joints: [0, 0, 0, 0, 0, 0],
+        type: "SO101",
+      },
+      right: {
+        joints: [0, 0, 0, 0, 0, 0],
+        type: "SO101",
+      },
     }),
     []
   );
+
+  // const currentHands = useMemo<BothHands>(
+  //   () => ({
+  //     left: JSON.parse(JSON.stringify(DefaultLeftHandDetection)),
+  //     right: JSON.parse(JSON.stringify(DefaultRightHandDetection)),
+  //   }),
+  //   []
+  // );
 
   // Initialize robot WebSocket connection
   const robotWS = useRobotWebSocket();
@@ -43,7 +58,7 @@ export default function ControlTest() {
         return;
       }
       //console.log("Joint values for", robotId, ":", jointValues);
-      robotWS.sendHandData(robotId, [...jointValues, 20]);
+      robotWS.sendHandData(robotId, [...jointValues]);
     },
     [robotWS.isConnected, robotWS.sendHandData]
   );
@@ -58,7 +73,8 @@ export default function ControlTest() {
           </h2>
           <div className="flex-1 relative">
             <RobotVisualizer
-              currentHands={currentHands}
+              currentState={currentState}
+              remotelyControlled={false}
               onJointValuesUpdate={handleJointValuesUpdate}
             />
           </div>

@@ -2,16 +2,20 @@ import { Box, Cylinder, PivotControls, Sphere, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Group, Matrix4, Mesh, Quaternion, Vector3 } from "three";
-import { HandDetection } from "./teletable.model";
+import { HandDetection, RobotOtherValues } from "./teletable.model";
 import ControlSliders from "./ControlSliders";
 
 export default function ControlPointVisualizer({
-  handData,
+  position,
+  basePosition,
+  otherValues,
   handId,
   offset,
   color,
 }: {
-  handData: HandDetection;
+  position: Vector3;
+  basePosition: Vector3;
+  otherValues: RobotOtherValues;
   handId: string;
   offset: Vector3;
   color: string;
@@ -20,7 +24,6 @@ export default function ControlPointVisualizer({
   const gripperRef = useRef<Group>(null);
 
   const baseRef = useRef<Mesh>(null);
-  const indicatorOpacity = handData?.detected ? 0.85 : 0.5;
 
   const showDebug = false;
 
@@ -31,38 +34,34 @@ export default function ControlPointVisualizer({
 
   useFrame(() => {
     if (handRef.current) {
-      if (handData.detected) {
-        // Update position based on hand data
-        const targetPos = new Vector3(
-          handData.position.x,
-          handData.position.y,
-          handData.position.z
-        );
+      // Update position based on hand data
+      const targetPos = new Vector3(position.x, position.y, position.z);
 
-        handRef.current.position.lerp(targetPos, 0.1);
+      handRef.current.position.copy(targetPos);
 
-        // Update rotation based on orientation
-        const targetQuat = new Quaternion(
-          handData.orientation.x,
-          handData.orientation.y,
-          handData.orientation.z,
-          handData.orientation.w
-        );
+      // handRef.current.position.lerp(targetPos, 0.1);
 
-        handRef.current.quaternion.slerp(targetQuat, 0.1);
-      }
+      // // Update rotation based on orientation
+      // const targetQuat = new Quaternion(
+      //   handData.orientation.x,
+      //   handData.orientation.y,
+      //   handData.orientation.z,
+      //   handData.orientation.w
+      // );
+
+      // handRef.current.quaternion.slerp(targetQuat, 0.1);
     }
 
-    if (baseRef.current) {
-      baseRef.current.position.x = handData.base.x;
-      baseRef.current.position.y = handData.base.y;
-      baseRef.current.position.z = handData.base.z;
-    }
+    // if (baseRef.current) {
+    //   baseRef.current.position.x = basePosition.x;
+    //   baseRef.current.position.y = basePosition.y;
+    //   baseRef.current.position.z = basePosition.z;
+    // }
   });
 
   const [handMatrix, setHandMatrix] = useState<Matrix4>(
     new Matrix4().compose(
-      new Vector3(0, 0, -0.3),
+      position.clone(),
       new Quaternion(),
       new Vector3(1, 1, 1)
     )
@@ -90,27 +89,26 @@ export default function ControlPointVisualizer({
   //   });
 
   useEffect(() => {
-    handData.open = gripperValue;
-    handData.orientation.y = pitchValue;
-    handData.orientation.z = wristValue;
-    handData.orientation.w = 1;
+    otherValues.gripper = gripperValue;
+    otherValues.pitch = pitchValue;
+    otherValues.roll = wristValue;
   }, [wristValue, gripperValue, pitchValue]);
 
   return (
-    <group ref={handRef}>
+    <group>
       {/* Main hand rectangle - made thicker for visibility */}
-      <Box args={[0.05, 0.05, 0.05]}>
+      {/* <Box ref={handRef} args={[0.05, 0.05, 0.05]}>
         <meshStandardMaterial
           color={color}
           metalness={0.1}
           roughness={0.3}
           emissive={color}
-          emissiveIntensity={handData?.detected ? 0.8 : 0.5}
+          emissiveIntensity={1}
           transparent={false}
           depthWrite={true}
           depthTest={true}
         />
-      </Box>
+      </Box> */}
 
       <PivotControls
         key={"pivot-control-" + handId}
@@ -129,14 +127,14 @@ export default function ControlPointVisualizer({
         annotations={true}
         autoTransform={false}
         onDrag={(localMatrix, deltaLocal, worldMatrix, deltaWorld) => {
-          const position = new Vector3();
+          const newPosition = new Vector3();
           const rotation = new Quaternion();
           const scale = new Vector3();
-          localMatrix.decompose(position, rotation, scale);
+          localMatrix.decompose(newPosition, rotation, scale);
 
-          handData.position.x = position.x + 0 * offset.x;
-          handData.position.y = position.y + 0 * offset.y;
-          handData.position.z = position.z + 0 * offset.z;
+          position.x = newPosition.x + 0 * offset.x;
+          position.y = newPosition.y + 0 * offset.y;
+          position.z = newPosition.z + 0 * offset.z;
           // handData.orientation.x = rotation.x;
           // handData.orientation.y = rotation.y;
           // handData.orientation.z = rotation.z;

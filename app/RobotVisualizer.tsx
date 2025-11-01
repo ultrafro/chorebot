@@ -12,6 +12,7 @@ import {
 } from "@react-three/drei";
 import {
   BothHands,
+  DataFrame,
   HandDetection,
   LeftArmBasePosition,
   RightArmBasePosition,
@@ -27,10 +28,12 @@ import IKRobotFrame from "./IKRobotFrame";
 import Compass from "./Compass";
 
 export default function RobotVisualizer({
-  currentHands,
+  currentState,
+  remotelyControlled,
   onJointValuesUpdate,
 }: {
-  currentHands: BothHands;
+  currentState: Record<string, DataFrame>;
+  remotelyControlled: boolean;
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -103,16 +106,18 @@ export default function RobotVisualizer({
           <Compass />
 
           <IKRobotFrame
-            handData={currentHands.left}
+            currentState={currentState.left}
             handId="left"
             basePosition={LeftArmBasePosition}
+            remotelyControlled={remotelyControlled}
             onJointValuesUpdate={onJointValuesUpdate}
           />
 
           <IKRobotFrame
-            handData={currentHands.right}
+            currentState={currentState.right}
             handId="right"
             basePosition={RightArmBasePosition}
+            remotelyControlled={remotelyControlled}
             onJointValuesUpdate={onJointValuesUpdate}
           />
 
