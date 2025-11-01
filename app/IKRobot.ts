@@ -10,9 +10,14 @@ export class IKRobot {
   urdfRobot: URDFRobot;
   ikRobot: Link | Joint;
   endLink: Link;
+
+  shoulderPanJoint: Joint;
+  shoulderLiftJoint: Joint;
+  elbowFlexJoint: Joint;
   gripperJoint: Joint;
   wristJoint: Joint;
   pitchJoint: Joint;
+
   skeletonList: (Link | Joint)[];
   visualSkeletonList: URDFVisual[];
 
@@ -21,6 +26,9 @@ export class IKRobot {
   pitchGoal: Goal;
   gripperGoal: Goal;
   shouldVisualize: boolean = false;
+
+  directMode: boolean = false;
+  directValues: number[] = [];
 
   solver: Solver;
   onJointValuesUpdate?: (jointValues: number[]) => void;
@@ -93,6 +101,16 @@ export class IKRobot {
       (link) => link.name === "gripper"
     ) as Joint;
 
+    this.shoulderPanJoint = this.skeletonList.find(
+      (link) => link.name === "shoulder_pan"
+    ) as Joint;
+    this.shoulderLiftJoint = this.skeletonList.find(
+      (link) => link.name === "shoulder_lift"
+    ) as Joint;
+    this.elbowFlexJoint = this.skeletonList.find(
+      (link) => link.name === "elbow_flex"
+    ) as Joint;
+
     //loop through the skeleton list, and set the DOF of each joint to be DOF.X
     // for (const joint of this.skeletonList) {
     //   if (joint instanceof Joint) {
@@ -151,6 +169,10 @@ export class IKRobot {
     this.solver.restPoseFactor = 0.001;
   }
 
+  setDirectValues(directValues: number[]) {
+    this.directValues = directValues;
+  }
+
   walkRobotTree(
     link: Link | Joint | URDFVisual,
     list: (Link | Joint | URDFVisual)[]
@@ -194,10 +216,26 @@ export class IKRobot {
 
   lastTime = 0;
   update() {
-    const start = performance.now();
-    this.solver.solve();
+    if (this.directMode) {
+      //set the join values directly
+      const order = [
+        this.shoulderPanJoint,
+        this.shoulderLiftJoint,
+        this.elbowFlexJoint,
+        this.pitchJoint,
+        this.wristJoint,
+        this.gripperJoint,
+      ];
+      for (let i = 0; i < order.length; i++) {
+        order[i].setDoFValue(DOF.EZ, this.directValues[i]);
+      }
+    } else {
+      const start = performance.now();
+      this.solver.solve();
+      const end = performance.now();
+    }
+
     this.ikRobot.updateMatrixWorld();
-    const end = performance.now();
 
     setUrdfFromIK(this.urdfRobot, this.ikRobot as Link);
 
@@ -215,12 +253,12 @@ export class IKRobot {
       );
     }
 
-    const now = performance.now();
-    if (now - this.lastTime > 1000) {
-      this.lastTime = now;
-      const jointValues = this.getJointValues();
-      //console.log(jointValues);
-    }
+    // const now = performance.now();
+    // if (now - this.lastTime > 1000) {
+    //   this.lastTime = now;
+    //   const jointValues = this.getJointValues();
+    //   //console.log(jointValues);
+    // }
   }
 
   getJointValues() {

@@ -1,5 +1,16 @@
 import { Vector3 } from "three";
 
+export type DataFrame = {
+  joints: number[];
+  type: "SO101";
+};
+
+export type RobotOtherValues = {
+  roll: number;
+  pitch: number;
+  gripper: number;
+};
+
 export type HandDetection = {
   position: { x: number; y: number; z: number };
   orientation: { x: number; y: number; z: number; w: number };

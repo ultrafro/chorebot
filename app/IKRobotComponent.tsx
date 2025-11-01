@@ -10,6 +10,8 @@ export function IKRobotComponent({
   goalPosition,
   goalOtherValues,
   onJointValuesUpdate,
+  useDirectValues,
+  directValues,
 }: {
   basePostion: Vector3;
   goalPosition: Vector3;
@@ -19,6 +21,8 @@ export function IKRobotComponent({
     gripper: number;
   };
   onJointValuesUpdate: (jointValues: number[]) => void;
+  useDirectValues: boolean;
+  directValues: number[];
 }) {
   const { scene } = useThree();
   const [IKRobotClass, setIKRobotClass] = useState<IKRobot | null>(null);
@@ -73,6 +77,12 @@ export function IKRobotComponent({
         goalOtherValues.roll,
         goalOtherValues.gripper
       );
+
+      if (useDirectValues) {
+        IKRobotClass.setDirectValues(directValues);
+      }
+
+      IKRobotClass.directMode = useDirectValues;
 
       IKRobotClass.update();
     }

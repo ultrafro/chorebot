@@ -44,32 +44,32 @@ export default function HostView({
         return;
       }
       //console.log("Joint values for", robotId, ":", jointValues);
-      robotWS.sendHandData(robotId, [...jointValues, 20]);
+      robotWS.sendHandData(robotId, [...jointValues]);
     },
     [robotWS.isConnected, robotWS.sendHandData]
   );
 
   // // Callback to handle hand updates from clients
-  // const handleHandsUpdate = useCallback(
-  //   (hands: BothHands) => {
-  //     // Ignore client updates when test control is enabled
-  //     if (isTestControlEnabled) {
-  //       return;
-  //     }
+  const handleHandsUpdate = useCallback(
+    (hands: BothHands) => {
+      // Ignore client updates when test control is enabled
+      if (isTestControlEnabled) {
+        return;
+      }
 
-  //     // Update current hands state with client data
-  //     //setCurrentHands(hands);
-  //     copyHands(hands, currentHands);
+      // Update current hands state with client data
+      //setCurrentHands(hands);
+      copyHands(hands, currentHands);
 
-  //     // Send hand data to robot server if connected
-  //     if (robotWS.isConnected) {
-  //       robotWS.sendHandData(hands);
-  //     }
-  //   },
-  //   [robotWS, isTestControlEnabled]
-  // );
+      // Send hand data to robot server if connected
+      if (robotWS.isConnected) {
+        robotWS.sendHandData(hands);
+      }
+    },
+    [robotWS, isTestControlEnabled]
+  );
 
-  // useUpdateHandsFromClientData(currentHands, peerJS, handleHandsUpdate);
+  useUpdateHandsFromClientData(currentHands, peerJS, handleHandsUpdate);
 
   // // Callback to handle direct control updates from the robot visualizer
   // const handleDirectControlUpdate = useCallback(
