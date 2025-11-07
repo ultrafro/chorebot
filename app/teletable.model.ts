@@ -11,6 +11,8 @@ export type RobotOtherValues = {
   gripper: number;
 };
 
+export const DefaultDirectValues = [0, 0, 0, 0, 0, 0];
+
 export type HandDetection = {
   position: { x: number; y: number; z: number };
   orientation: { x: number; y: number; z: number; w: number };
