@@ -1,16 +1,17 @@
-import { UsePeerJSResult } from "@/app/hooks/usePeerJS";
+import { UsePeerResult } from "@/app/hooks/usePeer";
 import { BothHands, DataFrame } from "@/app/teletable.model";
 import { Category, NormalizedLandmark } from "@mediapipe/tasks-vision";
+import { DataConnection } from "peerjs";
 import { useCallback } from "react";
 
-export function useBroadcastState(peerJS: UsePeerJSResult) {
+export function useBroadcastState(dataConnection: DataConnection | null) {
   const onUpdate = useCallback(
     (state: Record<string, DataFrame>) => {
-      peerJS.connections.forEach((connection) => {
-        connection.send(JSON.stringify(state));
-      });
+      if (dataConnection) {
+        dataConnection.send(JSON.stringify(state));
+      }
     },
-    [peerJS]
+    [dataConnection]
   );
 
   return onUpdate;

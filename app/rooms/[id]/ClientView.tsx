@@ -21,16 +21,18 @@ import RobotVisualizer from "@/app/RobotVisualizer";
 import HandViewer from "@/app/HandViewer";
 import { useBroadcastHands } from "./useBroadcastHands";
 import { useBroadcastState } from "./useBroadcastState";
+import { usePeer } from "@/app/hooks/usePeer";
+import { useVideoCallConnectionClientside } from "./useVideoCallConnectionClientside";
+import { useDataConnectionClientside } from "./useDataConnectionClientside";
 
 export default function ClientView({
   roomData,
-  peerJS,
   user,
 }: {
   roomData: RoomData;
-  peerJS: UsePeerJSResult;
   user: User | null;
 }) {
+  const peer = usePeer();
   const [directValues, setDirectValues] = useState([0, 0, 0, 0, 0, 0]);
 
   const currentState = useMemo<Record<string, DataFrame>>(
@@ -47,14 +49,16 @@ export default function ClientView({
     [directValues]
   );
 
-  // const onRawDetection = useProcessHandDetection(currentHands);
-  // const onRawDetectionWithBroadcast = useBroadcastHands(
-  //   onRawDetection,
-  //   peerJS,
-  //   currentHands
-  // );
+  const remoteStream = useVideoCallConnectionClientside(
+    roomData.hostPeerId || "",
+    peer
+  );
+  const dataConnection = useDataConnectionClientside(
+    roomData.hostPeerId || "",
+    peer
+  );
 
-  const onStateUpdate = useBroadcastState(peerJS);
+  const onStateUpdate = useBroadcastState(dataConnection);
 
   const handleJointValuesUpdate = useCallback(
     (robotId: string, jointValues: number[]) => {
@@ -77,21 +81,6 @@ export default function ClientView({
   // Custom hooks
   const { handleRequestControl, isRequestingControl, requestStatus } =
     useControlRequest(user, roomData.roomId);
-  const {
-    initiateVideoCall,
-    activeCall,
-    remoteStream,
-    setActiveCall,
-    setRemoteStream,
-  } = useVideoCall(roomData.hostPeerId, peerJS);
-  const { handleRefreshConnection, isRefreshingConnection } =
-    useConnectionRefresh(
-      isInControl,
-      activeCall,
-      setActiveCall,
-      setRemoteStream,
-      initiateVideoCall
-    );
 
   // Handle video stream display
   useEffect(() => {
@@ -100,62 +89,8 @@ export default function ClientView({
     }
   }, [remoteStream]);
 
-  console.log("peerjs", peerJS);
+  console.log("peer", peer);
   console.log("roomData", roomData);
-
-  // Establish data connection to host when PeerJS is ready
-  useEffect(() => {
-    if (
-      roomData.hostPeerId &&
-      peerJS.peer &&
-      peerJS.isConnected &&
-      !peerJS.connections.some((conn) => conn.peer === roomData.hostPeerId)
-    ) {
-      console.log("Establishing data connection to host:", roomData.hostPeerId);
-      peerJS.connect(roomData.hostPeerId).catch((err) => {
-        console.error("Failed to connect to host:", err);
-      });
-    }
-  }, [
-    roomData.hostPeerId,
-    peerJS.peer,
-    peerJS.isConnected,
-    peerJS.connections,
-    peerJS.connect,
-  ]);
-
-  // Handle video calling when client gains control or when PeerJS becomes ready
-  useEffect(() => {
-    if (
-      isInControl &&
-      roomData.hostPeerId &&
-      peerJS.peer &&
-      peerJS.isConnected &&
-      !activeCall
-    ) {
-      console.log(
-        "Client has control and PeerJS is ready, initiating video call..."
-      );
-      initiateVideoCall();
-    }
-  }, [
-    isInControl,
-    roomData.hostPeerId,
-    peerJS.peer,
-    peerJS.isConnected,
-    activeCall,
-    initiateVideoCall,
-  ]);
-
-  // Clean up video call when client loses control
-  useEffect(() => {
-    if (!isInControl && activeCall) {
-      console.log("Client lost control, closing video call");
-      activeCall.close();
-      setActiveCall(null);
-      setRemoteStream(null);
-    }
-  }, [isInControl, activeCall]);
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
@@ -240,22 +175,21 @@ export default function ClientView({
                   <div className="flex items-center space-x-2">
                     <div
                       className={`w-2 h-2 rounded-full ${
-                        activeCall ? "bg-green-500" : "bg-yellow-500"
+                        remoteStream ? "bg-green-500" : "bg-yellow-500"
                       }`}
                     ></div>
                     <span>
-                      {activeCall
+                      {remoteStream
                         ? "Video stream active"
                         : "Establishing connection..."}
                     </span>
                   </div>
                 </div>
                 <button
-                  onClick={handleRefreshConnection}
-                  disabled={isRefreshingConnection}
+                  disabled={true}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs rounded-lg transition-colors"
                 >
-                  {isRefreshingConnection ? "Refreshing..." : "Refresh"}
+                  "Refresh Connection"
                 </button>
               </div>
             )}
@@ -272,11 +206,11 @@ export default function ClientView({
                 <div className="flex items-center space-x-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      peerJS.isConnected ? "bg-green-500" : "bg-red-500"
+                      peer.isConnected ? "bg-green-500" : "bg-red-500"
                     }`}
                   ></div>
                   <span className="text-sm">
-                    {peerJS.isConnected ? "Connected" : "Disconnected"}
+                    {peer.isConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
               </div>
@@ -286,11 +220,11 @@ export default function ClientView({
                 <div className="flex items-center space-x-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      activeCall ? "bg-green-500" : "bg-gray-400"
+                      remoteStream ? "bg-green-500" : "bg-gray-400"
                     }`}
                   ></div>
                   <span className="text-sm">
-                    {activeCall ? "Active" : "Inactive"}
+                    {remoteStream ? "Active" : "Inactive"}
                   </span>
                 </div>
               </div>
@@ -335,15 +269,6 @@ export default function ClientView({
               )}
             </div>
           </div>
-
-          {/* Hand Tracking Section */}
-          {/* <div className="bg-foreground/5 rounded-lg border border-foreground/10 p-4 flex-1 w-full h-full relative">
-            <div className="z-10 pointer-events-none w-[300px] h-[300px]">
-              <div className="pointer-events-auto w-full h-full">
-                <HandViewer onHandsDetected={onRawDetectionWithBroadcast} />
-              </div>
-            </div>
-          </div> */}
         </div>
       </div>
     </div>

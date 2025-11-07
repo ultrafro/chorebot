@@ -17,14 +17,12 @@ import CameraSelectionModal from "./CameraSelectionModal";
 import { useBasicRoomInfo } from "./useBasicRoomInfo";
 import { RoomStatus } from "./RoomStatus";
 import { useSignInAnonymouslyWhenRoomLoads } from "./useSignInAnonymouslyWhenRoomLoads";
+import { usePeer } from "@/app/hooks/usePeer";
 
 export default function RoomPage() {
   const { id } = useParams();
   const router = useRouter();
   const { user, session, loading: authLoading, signInAnonymously } = useAuth();
-
-  // Initialize camera and PeerJS hooks
-  const peerJS = usePeerJS();
 
   useSignInAnonymouslyWhenRoomLoads();
 
@@ -49,10 +47,8 @@ export default function RoomPage() {
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
       {/* <RoomStatus roomData={basicRoomInfo} user={user} /> */}
       <div className="flex-1 min-h-0">
-        {isHost && <HostView roomData={basicRoomInfo} peerJS={peerJS} />}
-        {isClient && (
-          <ClientView roomData={basicRoomInfo} peerJS={peerJS} user={user} />
-        )}
+        {isHost && <HostView roomData={basicRoomInfo} />}
+        {isClient && <ClientView roomData={basicRoomInfo} user={user} />}
       </div>
     </div>
   );

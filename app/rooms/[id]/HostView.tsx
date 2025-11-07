@@ -3,10 +3,11 @@ import { useCamera } from "@/app/hooks/useCamera";
 import { RoomData } from "./roomUI.model";
 import { UsePeerJSResult } from "@/app/hooks/usePeerJS";
 import { useAuth } from "@/app/lib/auth";
-import { MediaConnection } from "peerjs";
+import Peer, { MediaConnection } from "peerjs";
 import {
   BothHands,
   DataFrame,
+  DefaultDirectValues,
   DefaultLeftHandDetection,
   DefaultRightHandDetection,
 } from "@/app/teletable.model";
@@ -16,54 +17,23 @@ import RobotVisualizer from "@/app/RobotVisualizer";
 import { useHostActions } from "./useHostActions";
 import { copyHands } from "./copyHands";
 import { useUpdateFromClient } from "./useUpdateFromClient";
+import { useInviteLink } from "./useInviteLink";
+import { usePeer } from "@/app/hooks/usePeer";
+import { useIsVideoCallConnected } from "./useIsVideoCallConnected";
 
-export default function HostView({
-  roomData,
-  peerJS,
-}: {
-  roomData: RoomData;
-  peerJS: UsePeerJSResult;
-}) {
+export default function HostView({ roomData }: { roomData: RoomData }) {
   const { user } = useAuth();
   const camera = useCamera();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isInitializingStream, setIsInitializingStream] = useState(false);
   const [isEndingStream, setIsEndingStream] = useState(false);
   const [isProcessingRequest, setIsProcessingRequest] = useState(false);
   const [isTestControlEnabled, setIsTestControlEnabled] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-
-  const [directValues, setDirectValues] = useState([0, 0, 0, 0, 0, 0]);
-
-  const currentState = useMemo<Record<string, DataFrame>>(
-    () => ({
-      left: {
-        joints: directValues,
-        type: "SO101",
-      },
-      right: {
-        joints: directValues,
-        type: "SO101",
-      },
-    }),
-    [directValues]
-  );
-
-  useEffect(() => {
-    if (!isTestControlEnabled) {
-      return;
-    }
-
-    for (let i = 0; i < directValues.length; i++) {
-      currentState.left.joints[i] = directValues[i];
-      currentState.right.joints[i] = directValues[i];
-    }
-  }, [directValues, isTestControlEnabled]);
-
   // Initialize robot WebSocket connection
   const robotWS = useRobotWebSocket();
 
-  const handleJointValuesUpdate = useCallback(
+  const sendJointValuesToRobot = useCallback(
     (robotId: string, jointValues: number[]) => {
       //console.log("jointValues", jointValues);
       //console.log("robotWS.isConnected", robotWS.isConnected);
@@ -76,46 +46,51 @@ export default function HostView({
     [robotWS.isConnected, robotWS.sendHandData]
   );
 
-  console.log("peerjs", peerJS);
+  const onGetLocalStream = useCallback(() => {
+    return camera.stream;
+  }, [camera.stream]);
 
-  // // Callback to handle hand updates from clients
-  const handleHandsUpdate = useCallback(
-    (hands: Record<string, DataFrame>) => {
-      // Ignore client updates when test control is enabled
+  const onData = useCallback(
+    (data: any) => {
       if (isTestControlEnabled) {
         return;
       }
 
-      for (const key in hands) {
-        currentState[key as keyof Record<string, DataFrame>].joints =
-          hands[key as keyof Record<string, DataFrame>].joints;
-      }
-
-      for (const key in currentState) {
-        handleJointValuesUpdate(key, currentState[key].joints);
+      try {
+        const newData = JSON.parse(data) as Record<string, DataFrame>;
+        for (const key in newData) {
+          currentState[key as keyof Record<string, DataFrame>].joints =
+            newData[key as keyof Record<string, DataFrame>].joints;
+        }
+        for (const key in currentState) {
+          sendJointValuesToRobot(key, currentState[key].joints);
+        }
+      } catch (error) {
+        console.error("Error parsing data", error, data);
       }
     },
-    [isTestControlEnabled, handleJointValuesUpdate]
+    [isTestControlEnabled, sendJointValuesToRobot]
   );
 
-  useUpdateFromClient(peerJS, handleHandsUpdate);
+  const currentState = useMemo<Record<string, DataFrame>>(
+    () => ({
+      left: {
+        joints: [...DefaultDirectValues],
+        type: "SO101",
+      },
+      right: {
+        joints: [...DefaultDirectValues],
+        type: "SO101",
+      },
+    }),
+    []
+  );
 
-  // useUpdateHandsFromClientData(currentState, peerJS, handleHandsUpdate);
+  const peer = usePeer(onData, onGetLocalStream);
 
-  // // Callback to handle direct control updates from the robot visualizer
-  // const handleDirectControlUpdate = useCallback(
-  //   (hands: BothHands) => {
-  //     if (isTestControlEnabled) {
-  //       copyHands(hands, currentHands);
+  const videoCallConnected = useIsVideoCallConnected(peer);
 
-  //       // Send hand data to robot server if connected
-  //       if (robotWS.isConnected) {
-  //         robotWS.sendHandData(hands);
-  //       }
-  //     }
-  //   },
-  //   [isTestControlEnabled, robotWS]
-  // );
+  console.log("peer", peer);
 
   // Initialize camera devices when component mounts
   useEffect(() => {
@@ -139,30 +114,6 @@ export default function HostView({
     }
   }, [camera.stream]);
 
-  // Handle incoming video calls from clients
-  useEffect(() => {
-    if (peerJS.mediaConnections.length > 0) {
-      // Find calls that haven't been answered yet
-      const unansweredCalls = peerJS.mediaConnections.filter(
-        (call) => !call.open && call.peer !== peerJS.peerId
-      );
-
-      unansweredCalls.forEach((incomingCall) => {
-        console.log("Answering incoming call from client:", incomingCall.peer);
-        // Answer the call with camera stream if available, otherwise with empty stream
-        // The host should always answer calls to establish the connection
-        peerJS.answerCall(incomingCall, camera.stream || undefined);
-
-        // If we don't have a camera stream yet, log a warning
-        if (!camera.stream) {
-          console.warn(
-            "Answered call without camera stream - client may not see video until stream is ready"
-          );
-        }
-      });
-    }
-  }, [peerJS.mediaConnections, camera.stream, peerJS]);
-
   const {
     handleMakeRoomReady,
     handleEndStream,
@@ -173,7 +124,7 @@ export default function HostView({
     user,
     roomData,
     camera,
-    peerJS,
+    peer,
     setIsInitializingStream,
     setIsEndingStream,
     setIsProcessingRequest
@@ -181,31 +132,7 @@ export default function HostView({
 
   const isRoomReady = roomData.hostPeerId !== null;
 
-  const handleCopyInviteLink = useCallback(async () => {
-    try {
-      const currentUrl = window.location.href;
-      await navigator.clipboard.writeText(currentUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-      // Fallback for older browsers
-      const textArea = document.createElement("textarea");
-      textArea.value = window.location.href;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand("copy");
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 2000);
-      } catch (fallbackErr) {
-        console.error("Fallback copy failed:", fallbackErr);
-      }
-      document.body.removeChild(textArea);
-    }
-  }, []);
+  const { linkCopied, handleCopyInviteLink } = useInviteLink();
 
   return (
     <div className="h-full flex bg-background overflow-hidden">
@@ -221,7 +148,7 @@ export default function HostView({
             <RobotVisualizer
               currentState={currentState}
               remotelyControlled={!isTestControlEnabled}
-              onJointValuesUpdate={handleJointValuesUpdate}
+              onJointValuesUpdate={sendJointValuesToRobot}
             />
           </div>
         </div>
@@ -413,11 +340,11 @@ export default function HostView({
                 <div className="flex items-center space-x-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      peerJS.isConnected ? "bg-green-500" : "bg-red-500"
+                      peer.isConnected ? "bg-green-500" : "bg-red-500"
                     }`}
                   ></div>
                   <span className="text-sm">
-                    {peerJS.isConnected ? "Connected" : "Disconnected"}
+                    {peer.isConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
               </div>
@@ -441,13 +368,11 @@ export default function HostView({
                 <div className="flex items-center space-x-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      peerJS.mediaConnections.length > 0
-                        ? "bg-green-500"
-                        : "bg-gray-400"
+                      videoCallConnected ? "bg-green-500" : "bg-gray-400"
                     }`}
                   ></div>
                   <span className="text-sm">
-                    {peerJS.mediaConnections.length} active
+                    {videoCallConnected ? "Active" : "Inactive"}
                   </span>
                 </div>
               </div>
