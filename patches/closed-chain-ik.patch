@@ -1,7 +1,10 @@
-diff --git a/node_modules/closed-chain-ik/src/three/IKJointHelper.js b/node_modules/closed-chain-ik/src/three/IKJointHelper.js
-index 1234567..abcdefg 100644
---- a/node_modules/closed-chain-ik/src/three/IKJointHelper.js
-+++ b/node_modules/closed-chain-ik/src/three/IKJointHelper.js
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+deleted file mode 100644
+index 851f426b16160af3f225fa5db26dff9cff775c93..0000000000000000000000000000000000000000
+diff --git a/src/three/IKJointHelper.js b/src/three/IKJointHelper.js
+index 35959dc8d05fae819d66b82b102ae04162410344..e92762824bb26b140a5dfe26ca2c4e9c77fb1b09 100644
+--- a/src/three/IKJointHelper.js
++++ b/src/three/IKJointHelper.js
 @@ -1,4 +1,4 @@
 -import { BoxBufferGeometry, Vector3, CylinderBufferGeometry, SphereBufferGeometry, Mesh, MeshStandardMaterial } from 'three';
 +import { BoxGeometry, Vector3, CylinderGeometry, SphereGeometry, Mesh, MeshStandardMaterial } from 'three';
@@ -9,6 +12,7 @@ index 1234567..abcdefg 100644
  import { IKLinkHelper } from './IKLinkHelper.js';
  import { DOF } from '../core/Joint.js';
 @@ -45,7 +45,7 @@ class RotationLimitHelper extends Mesh {
+ 		}
  
  		const dof = this._dof;
 -		const geometry = new CylinderBufferGeometry( 0.075, 0.075, 1e-7, 100, 1, false, min, delta );
@@ -43,7 +47,7 @@ index 1234567..abcdefg 100644
  			new MeshStandardMaterial(),
  		);
  
-@@ -103,7 +103,7 @@ export class IKJointHelper extends IKLinkHelper {
+@@ -103,12 +103,12 @@ export class IKJointHelper extends IKLinkHelper {
  		zRotationLimits.rotation.set( HALF_PI, 0, 0 );
  
  		const freeRotationMesh = new Mesh(
@@ -57,3 +61,4 @@ index 1234567..abcdefg 100644
 +			new BoxGeometry( 0.05, 0.05, 0.05 ),
  			new MeshStandardMaterial(),
  		);
+ 
