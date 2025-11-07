@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  closed-chain-ik:
+    hash: aeb48d70c21feaffbde9a230aa6879e14c0a34f2551127f30fe3d2f0d14c5013
+    path: patches/closed-chain-ik.patch
+
 importers:
 
   .:
@@ -28,7 +33,7 @@ importers:
         version: 0.180.0
       closed-chain-ik:
         specifier: ^0.0.3
-        version: 0.0.3(three@0.180.0)(urdf-loader@0.12.6(three@0.180.0))
+        version: 0.0.3(patch_hash=aeb48d70c21feaffbde9a230aa6879e14c0a34f2551127f30fe3d2f0d14c5013)(three@0.180.0)(urdf-loader@0.12.6(three@0.180.0))
       nanoid:
         specifier: ^5.1.5
         version: 5.1.5
@@ -1648,7 +1653,7 @@ snapshots:
 
   client-only@0.0.1: {}
 
-  closed-chain-ik@0.0.3(three@0.180.0)(urdf-loader@0.12.6(three@0.180.0)):
+  closed-chain-ik@0.0.3(patch_hash=aeb48d70c21feaffbde9a230aa6879e14c0a34f2551127f30fe3d2f0d14c5013)(three@0.180.0)(urdf-loader@0.12.6(three@0.180.0)):
     dependencies:
       gl-matrix: 3.4.4
       linear-solve: 1.2.1
