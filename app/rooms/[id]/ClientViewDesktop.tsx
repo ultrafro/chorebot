@@ -86,7 +86,7 @@ export function ClientViewDesktop({
   );
 }
 
-function RoomPasswordSection({
+export function RoomPasswordSection({
   roomPassword,
   setRoomPassword,
 }: {
@@ -109,7 +109,7 @@ function RoomPasswordSection({
   );
 }
 
-function RemoteViewSection({
+export function RemoteViewSection({
   remoteStream,
   isInControl,
 }: {
@@ -198,7 +198,7 @@ function RemoteViewSection({
   );
 }
 
-function ConnectionStatusSection({
+export function ConnectionStatusSection({
   peerIsConnected,
   remoteStream,
   isInControl,
@@ -259,7 +259,7 @@ function ConnectionStatusSection({
   );
 }
 
-function ControlRequestSection({
+export function ControlRequestSection({
   handleRequestControl,
   isRequestingControl,
   requestStatus,

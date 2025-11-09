@@ -103,7 +103,20 @@ export default function ClientView({
   const isMobile = useIsMobile();
 
   if (isMobile) {
-    return <ClientViewMobile />;
+    return (
+      <ClientViewMobile
+        isInControl={isInControl}
+        currentState={currentState}
+        handleJointValuesUpdate={handleJointValuesUpdate}
+        roomPassword={roomPassword}
+        setRoomPassword={setRoomPassword}
+        remoteStream={remoteStream}
+        handleRequestControl={handleRequestControl}
+        isRequestingControl={isRequestingControl}
+        requestStatus={requestStatus}
+        peerIsConnected={peer.isConnected}
+      />
+    );
   } else {
     return (
       <ClientViewDesktop
