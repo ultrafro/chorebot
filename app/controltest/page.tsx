@@ -96,7 +96,7 @@ export default function ControlTest() {
           <div className="flex-1 relative">
             <RobotVisualizer
               currentState={currentState}
-              remotelyControlled={directMode}
+              controlMode={directMode ? "DirectJoints" : "WidgetGoal"}
               onJointValuesUpdate={handleJointValuesUpdate}
             />
           </div>

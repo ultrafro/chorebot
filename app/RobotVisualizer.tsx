@@ -13,9 +13,11 @@ import {
 import {
   BothHands,
   DataFrame,
+  ExternalGoal,
   HandDetection,
   LeftArmBasePosition,
   RightArmBasePosition,
+  RobotVisualizerControlMode,
 } from "./teletable.model";
 import * as THREE from "three";
 import { RobotArmVisualizer } from "./RobotArmVisualizer";
@@ -29,12 +31,14 @@ import Compass from "./Compass";
 
 export default function RobotVisualizer({
   currentState,
-  remotelyControlled,
+  controlMode,
   onJointValuesUpdate,
+  externalGoal,
 }: {
   currentState: RefObject<Record<string, DataFrame>>;
-  remotelyControlled: boolean;
+  controlMode: RobotVisualizerControlMode;
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
+  externalGoal?: ExternalGoal;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -109,7 +113,8 @@ export default function RobotVisualizer({
             currentState={currentState}
             handId="left"
             basePosition={LeftArmBasePosition}
-            remotelyControlled={remotelyControlled}
+            controlMode={controlMode}
+            externalGoal={externalGoal}
             onJointValuesUpdate={onJointValuesUpdate}
           />
 
@@ -117,7 +122,8 @@ export default function RobotVisualizer({
             currentState={currentState}
             handId="right"
             basePosition={RightArmBasePosition}
-            remotelyControlled={remotelyControlled}
+            controlMode={controlMode}
+            externalGoal={externalGoal}
             onJointValuesUpdate={onJointValuesUpdate}
           />
 
