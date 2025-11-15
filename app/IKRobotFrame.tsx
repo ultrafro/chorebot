@@ -1,31 +1,33 @@
 import { useFrame } from "@react-three/fiber";
 import { IKRobotComponent } from "./IKRobotComponent";
-import { Quaternion, Vector3 } from "three";
-import { RefObject, useRef } from "react";
+import { Quaternion, Sphere, Vector3 } from "three";
+import { RefObject, useEffect, useRef } from "react";
 import {
   BothHands,
   DataFrame,
+  ExternalGoal,
   HandDetection,
   LeftArmBasePosition,
+  RobotVisualizerControlMode,
 } from "./teletable.model";
 import ControlPointVisualizer from "./ControlPointVisualizer";
+import { ExternalGoalVisualizer } from "./ExternalGoalVisualizer";
 
 export default function IKRobotFrame({
   currentState,
   handId,
   basePosition,
-  remotelyControlled,
+
   onJointValuesUpdate,
-  directMode,
-  directValues,
+  controlMode,
+  externalGoal,
 }: {
   currentState: RefObject<Record<string, DataFrame>>;
   handId: string;
   basePosition: Vector3;
-  remotelyControlled: boolean;
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
-  directMode?: boolean;
-  directValues?: number[];
+  controlMode: RobotVisualizerControlMode;
+  externalGoal?: ExternalGoal;
 }) {
   const handPosition = useRef(new Vector3(0, 0, -0.3));
   const handQuaternion = useRef(new Quaternion(0, 0, 0, 1));
@@ -34,6 +36,17 @@ export default function IKRobotFrame({
     pitch: 0,
     gripper: 0,
   });
+
+  useEffect(() => {
+    if (externalGoal && controlMode === "ExternalGoal") {
+      handPosition.current = externalGoal.position;
+      handOtherValues.current = {
+        roll: externalGoal.roll,
+        pitch: externalGoal.pitch,
+        gripper: externalGoal.gripper,
+      };
+    }
+  }, [externalGoal]);
 
   return (
     <group position={basePosition}>
@@ -47,19 +60,20 @@ export default function IKRobotFrame({
             currentState.current[handId].joints[i] = jointValues[i];
           }
 
-          if (remotelyControlled || directMode) {
+          if (controlMode === "DirectJoints") {
             return;
           }
+
           //console.log("Joint values for", handId, ":", jointValues);
           onJointValuesUpdate?.(handId, jointValues);
         }}
-        useDirectValues={remotelyControlled || directMode || false}
+        useDirectValues={controlMode === "DirectJoints" || false}
         currentState={currentState}
         handId={handId}
       />
       {/* <ControlPointVisualizer handData={handData} color="#ef4444" /> */}
 
-      {!remotelyControlled && (
+      {controlMode === "WidgetGoal" && (
         <ControlPointVisualizer
           position={handPosition.current}
           basePosition={basePosition}
@@ -68,6 +82,12 @@ export default function IKRobotFrame({
           offset={basePosition}
           color="#ef4444"
         />
+      )}
+
+      {controlMode === "ExternalGoal" && externalGoal && (
+        <>
+          <ExternalGoalVisualizer goal={externalGoal} />
+        </>
       )}
     </group>
   );

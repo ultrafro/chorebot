@@ -44,7 +44,7 @@ export function ClientViewDesktop({
           <div className="flex-1 bg-background rounded-lg border border-foreground/10 overflow-hidden">
             <RobotVisualizer
               currentState={currentState}
-              remotelyControlled={false}
+              controlMode="WidgetGoal"
               onJointValuesUpdate={handleJointValuesUpdate}
             />
           </div>

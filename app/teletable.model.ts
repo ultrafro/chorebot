@@ -56,3 +56,15 @@ export const DefaultRightHandDetection: HandDetection = {
   gripperPosition: { x: 0, y: 0, z: 0 },
   gripperOrientation: { x: 0, y: 0, z: 0, w: 1 },
 };
+
+export type RobotVisualizerControlMode =
+  | "ExternalGoal"
+  | "WidgetGoal"
+  | "DirectJoints";
+
+export type ExternalGoal = {
+  position: Vector3;
+  roll: number;
+  pitch: number;
+  gripper: number;
+};
