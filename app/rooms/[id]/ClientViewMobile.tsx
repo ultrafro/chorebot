@@ -159,7 +159,12 @@ export function ClientViewMobile({
       </div>
 
       {/* Bottom: Control section */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 pb-4 px-4">
+      <div
+        className="absolute bottom-0 left-0 right-0 z-10 px-4"
+        style={{
+          paddingBottom: `max(1rem, env(safe-area-inset-bottom, 1rem))`,
+        }}
+      >
         <MobileControlSection
           isInControl={isInControl}
           externalGoal={externalGoal}
