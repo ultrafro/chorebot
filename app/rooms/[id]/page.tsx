@@ -44,7 +44,7 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden" style={{ height: '100dvh' }}>
       {/* <RoomStatus roomData={basicRoomInfo} user={user} /> */}
       <div className="flex-1 min-h-0">
         {isHost && <HostView roomData={basicRoomInfo} />}
