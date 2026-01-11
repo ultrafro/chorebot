@@ -28,6 +28,7 @@ export default function ControlPointVisualizer({
   handId,
   offset,
   color,
+  hideControlSliders,
 }: {
   position: Vector3;
   basePosition: Vector3;
@@ -35,6 +36,7 @@ export default function ControlPointVisualizer({
   handId: string;
   offset: Vector3;
   color: string;
+  hideControlSliders?: boolean;
 }) {
   const handRef = useRef<Group>(null);
   const gripperRef = useRef<Group>(null);
@@ -243,7 +245,7 @@ export default function ControlPointVisualizer({
       )}
 
       {/* Three sliders for wrist, pitch, and gripper */}
-      <ControlSliders
+      {!hideControlSliders && <ControlSliders
         wristValue={wristValue}
         gripperValue={gripperValue}
         pitchValue={pitchValue}
@@ -251,7 +253,7 @@ export default function ControlPointVisualizer({
         onGripperChange={setGripperValue}
         onPitchChange={setPitchValue}
         position={[0, -0.05, 0]}
-      />
+      />}
     </group>
   );
 }

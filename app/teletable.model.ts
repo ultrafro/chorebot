@@ -30,8 +30,8 @@ export type BothHands = {
   right: HandDetection;
 };
 
-export const LeftArmBasePosition = new Vector3(-1, 0, 0);
-export const RightArmBasePosition = new Vector3(1, 0, 0);
+export const LeftArmBasePosition = new Vector3(-0.3, 0, 0);
+export const RightArmBasePosition = new Vector3(0.3, 0, 0);
 
 export const DefaultLeftHandDetection: HandDetection = {
   position: { x: 0, y: 0, z: -0.3 },

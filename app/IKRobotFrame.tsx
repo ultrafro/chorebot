@@ -21,6 +21,7 @@ export default function IKRobotFrame({
   onJointValuesUpdate,
   controlMode,
   externalGoal,
+  hideControlSliders,
 }: {
   currentState: RefObject<Record<string, DataFrame>>;
   handId: string;
@@ -28,6 +29,7 @@ export default function IKRobotFrame({
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
   controlMode: RobotVisualizerControlMode;
   externalGoal?: ExternalGoal;
+  hideControlSliders?: boolean;
 }) {
   const handPosition = useRef(new Vector3(0, 0, -0.3));
   const handQuaternion = useRef(new Quaternion(0, 0, 0, 1));
@@ -87,6 +89,7 @@ export default function IKRobotFrame({
           handId={handId}
           offset={basePosition}
           color="#ef4444"
+          hideControlSliders={hideControlSliders}
         />
       )}
 
