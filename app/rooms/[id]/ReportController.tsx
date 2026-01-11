@@ -73,6 +73,9 @@ export function ReportController({
             thing.quaternion,
             tempScale.current
         );
+
+        const triggerValue = inputState?.gamepad?.['xr-standard-trigger']?.button ?? 0;
+        thing.triggerValue = triggerValue;
     });
 
     if (!inputState?.inputSource?.targetRaySpace) {
@@ -98,6 +101,7 @@ export function ReportController({
 
 export const controllerPositions: Record<ControllerIdentifier, {
     position: Vector3;
+    triggerValue: number;
     quaternion: Quaternion;
     id: string | number;
     online: boolean;
@@ -105,6 +109,7 @@ export const controllerPositions: Record<ControllerIdentifier, {
 }> = {
     rightHand: {
         position: new Vector3(),
+        triggerValue: 0,
         quaternion: new Quaternion(),
         id: 0,
         online: false,
@@ -112,6 +117,7 @@ export const controllerPositions: Record<ControllerIdentifier, {
     },
     leftHand: {
         position: new Vector3(),
+        triggerValue: 0,
         quaternion: new Quaternion(),
         id: 1,
         online: false,
@@ -119,6 +125,7 @@ export const controllerPositions: Record<ControllerIdentifier, {
     },
     rightController: {
         position: new Vector3(),
+        triggerValue: 0,
         quaternion: new Quaternion(),
         id: 2,
         online: false,
@@ -126,6 +133,7 @@ export const controllerPositions: Record<ControllerIdentifier, {
     },
     leftController: {
         position: new Vector3(),
+        triggerValue: 0,
         quaternion: new Quaternion(),
         id: 3,
         online: false,

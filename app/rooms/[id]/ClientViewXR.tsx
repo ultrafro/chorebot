@@ -1,11 +1,14 @@
 'use client'
-import { DataFrame } from "@/app/teletable.model";
+import { DataFrame, MobileGoal } from "@/app/teletable.model";
 import { useXRInputSourceStateContext, XR, XRLayer, XRStore } from "@react-three/xr";
 import { Handle, HandleTarget } from "@react-three/handle";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
-import { ReportController } from "./ReportController";
+import { useCallback, useMemo, useRef } from "react";
+import { controllerPositions, ReportController } from "./ReportController";
 import { Clamper } from "./Clamper";
+import RobotVisualizer, { RobotVisualizerXR } from "@/app/RobotVisualizer";
+import { useFrame } from "@react-three/fiber";
+import { Vector3 } from "three";
 
 // Import fiber separately (doesn't have WebXR dependencies)
 const Canvas = dynamic(
@@ -20,7 +23,7 @@ const TABLE_HEIGHT = 0.05;
 const TABLE_LEG_HEIGHT = 0.7;
 const HANDLE_SIZE = 0.06;
 
-function Table({ video }: { video: HTMLVideoElement | null }) {
+function Table({ video, onJointValuesUpdate }: { video: HTMLVideoElement | null, onJointValuesUpdate: (robotId: string, joints: number[]) => void }) {
 
     // Corner positions for handles (on top of the table surface)
     const handlePositions: [number, number, number][] = [
@@ -30,10 +33,44 @@ function Table({ video }: { video: HTMLVideoElement | null }) {
         [TABLE_WIDTH / 2 - HANDLE_SIZE / 2, TABLE_HEIGHT / 2 + HANDLE_SIZE / 2, TABLE_DEPTH / 2 - HANDLE_SIZE / 2],
     ];
 
+    const currentState = useRef<Record<string, DataFrame>>({});
+    const mobileGoal = useRef<MobileGoal>({});
+
+    useFrame(() => {
+        //copy controller positions to currentState
+        const leftController = controllerPositions.leftController;
+        if (!mobileGoal.current.left) {
+            mobileGoal.current.left = {
+                position: new Vector3(leftController.position.x, leftController.position.y, leftController.position.z),
+                roll: 0,
+                pitch: 0,
+                gripper: 0,
+            };
+        }
+
+        mobileGoal.current.left.position.copy(leftController.position);
+        mobileGoal.current.left.gripper = leftController.triggerValue;
+
+
+
+        const rightController = controllerPositions.rightController;
+        if (!mobileGoal.current.right) {
+            mobileGoal.current.right = {
+                position: new Vector3(rightController.position.x, rightController.position.y, rightController.position.z),
+                roll: 0,
+                pitch: 0,
+                gripper: 0,
+            };
+        }
+        mobileGoal.current.right.position.copy(rightController.position);
+        mobileGoal.current.right.gripper = rightController.triggerValue;
+
+    });
+
+
     return (
         <>
             <ReportController identifier="rightController" >
-                {/* lareg green box */}
                 <Clamper />
             </ReportController>
             <ReportController identifier="leftController" >
@@ -68,8 +105,14 @@ function Table({ video }: { video: HTMLVideoElement | null }) {
                             src={video}
                         />
                     )}
-                </HandleTarget>
 
+                    <RobotVisualizerXR
+                        currentState={currentState}
+                        controlMode="WidgetGoal"
+                        onJointValuesUpdate={onJointValuesUpdate}
+                    />
+
+                </HandleTarget>
             </group>
         </>
     );
@@ -78,12 +121,12 @@ function Table({ video }: { video: HTMLVideoElement | null }) {
 export default function ClientViewXR({
     store,
     remoteStream,
-    onStateUpdate,
+    onJointValuesUpdate,
     onExitXR
 }: {
     store: XRStore | null,
     remoteStream: MediaStream | null,
-    onStateUpdate: (state: Record<string, DataFrame>) => void,
+    onJointValuesUpdate: (robotId: string, joints: number[]) => void,
     onExitXR: () => void
 }) {
     const video = useMemo(() => {
@@ -94,6 +137,7 @@ export default function ClientViewXR({
 
         return video;
     }, [remoteStream]);
+
 
     if (!store) {
         return <div>Loading...</div>
@@ -123,7 +167,7 @@ export default function ClientViewXR({
                 <XR store={store}>
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[5, 5, 5]} intensity={0.8} />
-                    <Table video={video} />
+                    <Table video={video} onJointValuesUpdate={onJointValuesUpdate} />
                 </XR>
             </Canvas>
         </div>

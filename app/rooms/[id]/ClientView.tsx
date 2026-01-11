@@ -145,7 +145,12 @@ export default function ClientView({
   // console.log('[DEV] is in control', isInControl, 'remote stream', remoteStream);
 
   if (isInXR) {
-    return <XRPageClient store={store} remoteStream={remoteStream} onStateUpdate={onStateUpdate} onExitXR={onExitXR} />;
+    return <XRPageClient
+      store={store}
+      remoteStream={remoteStream}
+      onJointValuesUpdate={handleJointValuesUpdate}
+      onExitXR={onExitXR}
+    />;
   }
 
   if (isMobile) {

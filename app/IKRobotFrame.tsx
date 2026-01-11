@@ -53,8 +53,18 @@ export default function IKRobotFrame({
         onJointValuesUpdate={(jointValues) => {
           //copy into currentState.joints
           for (let i = 0; i < jointValues.length; i++) {
+            if (!currentState.current[handId]) {
+              currentState.current[handId] = {
+                joints: [],
+                type: "SO101",
+              };
+            }
+            if (!currentState.current[handId].joints) {
+              currentState.current[handId].joints = [];
+            }
             currentState.current[handId].joints[i] = jointValues[i];
           }
+
 
           if (controlMode === "DirectJoints") {
             return;
