@@ -1,6 +1,6 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { urdfRobotToIKRoot } from "closed-chain-ik";
-import { RefObject, useEffect, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { Vector3, Quaternion, LoadingManager, Scene } from "three";
 import URDFLoader from "urdf-loader";
 import { IKRobot } from "./IKRobot";
@@ -30,7 +30,13 @@ export function IKRobotComponent({
   const { scene } = useThree();
   const [IKRobotClass, setIKRobotClass] = useState<IKRobot | null>(null);
 
+  const hasLoaded = useRef(false);
   useEffect(() => {
+    if (hasLoaded.current) {
+      return;
+    }
+    hasLoaded.current = true;
+
     const manager = new LoadingManager();
     const loader = new URDFLoader(manager);
     // loader.packages = {

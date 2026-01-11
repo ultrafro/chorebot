@@ -161,6 +161,9 @@ export function RobotVisualizerXR({
       onJointValuesUpdate={onJointValuesUpdate}
       mobileGoal={mobileGoal}
       focusedRobot={focusedRobot}
+      hideGrid={true}
+      hideCompass={true}
+      hideControlSliders={true}
     />
   );
 }
@@ -172,12 +175,18 @@ function RobotVisualizerCore({
   onJointValuesUpdate,
   mobileGoal,
   focusedRobot,
+  hideGrid,
+  hideCompass,
+  hideControlSliders,
 }: {
   currentState: RefObject<Record<string, DataFrame>>;
   controlMode: RobotVisualizerControlMode;
   onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
   mobileGoal?: MobileGoal;
   focusedRobot?: string | null;
+  hideGrid?: boolean;
+  hideCompass?: boolean;
+  hideControlSliders?: boolean;
 }) {
   return (
     <>
@@ -202,7 +211,7 @@ function RobotVisualizerCore({
       />
 
       {/* Grid ground */}
-      <Grid
+      {!hideGrid && <Grid
         args={[50, 50]}
         cellSize={0.5}
         cellThickness={0.5}
@@ -212,10 +221,10 @@ function RobotVisualizerCore({
         sectionColor="#6b7280"
         fadeDistance={100}
         fadeStrength={1}
-      />
+      />}
 
       {/* Compass at origin */}
-      <Compass />
+      {!hideCompass && <Compass />}
 
       <IKRobotFrame
         currentState={currentState}
@@ -224,6 +233,7 @@ function RobotVisualizerCore({
         controlMode={controlMode}
         externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
         onJointValuesUpdate={onJointValuesUpdate}
+        hideControlSliders={hideControlSliders}
       />
 
       <IKRobotFrame
@@ -233,6 +243,7 @@ function RobotVisualizerCore({
         controlMode={controlMode}
         externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
         onJointValuesUpdate={onJointValuesUpdate}
+        hideControlSliders={hideControlSliders}
       />
 
       <OrbitControlsWithTarget focusedRobot={focusedRobot} />
