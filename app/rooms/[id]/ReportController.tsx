@@ -1,0 +1,134 @@
+import { useXRInputSourceState } from "@react-three/xr";
+
+import {
+    useXRAnchor,
+    XRSpace,
+    useXRInputSourceEvent,
+    XR,
+} from "@react-three/xr";
+import { createContext, useEffect, useRef } from "react";
+import { Mesh, Object3D, Quaternion, Vector3 } from "three";
+import { useFrame } from "@react-three/fiber";
+import { ControllerIdentifier, getAAndB, ReportControllerContext } from "./ReportController.model";
+
+
+export function ReportController({
+    identifier,
+    children
+}: {
+    identifier: ControllerIdentifier;
+    children?: React.ReactNode;
+}) {
+
+    const { a, b } = getAAndB(identifier);
+
+
+    useEffect(() => {
+        (window as any).controllerPositions = controllerPositions;
+
+
+    }, []);
+
+
+
+
+    const inputState = useXRInputSourceState(a as any, b as any);
+
+    const meshRef = useRef<Mesh>(null!);
+
+    const tempScale = useRef(new Vector3(1, 1, 1));
+
+    useEffect(() => {
+        const valid = !!inputState?.inputSource?.targetRaySpace;
+        const thing = controllerPositions[identifier];
+
+
+
+        thing.online = valid;
+        thing.id = inputState?.id || -1;
+
+        return () => {
+            thing.online = false;
+        };
+    }, [inputState?.inputSource?.targetRaySpace, inputState?.id, identifier]);
+
+    useFrame(() => {
+        if (!meshRef.current) {
+            return;
+        }
+
+        //get global position and quaternion of mesh ref
+        meshRef.current.updateWorldMatrix(true, true);
+
+        const thing = controllerPositions[identifier];
+
+        const mesh = meshRef.current as unknown as Object3D;
+
+        if (thing.object !== mesh) {
+            thing.object = mesh;
+        }
+
+        mesh.matrixWorld.decompose(
+            thing.position,
+            thing.quaternion,
+            tempScale.current
+        );
+    });
+
+    if (!inputState?.inputSource?.targetRaySpace) {
+        return null;
+    }
+
+    return (
+        <>
+            <XRSpace space={inputState?.inputSource?.targetRaySpace}>
+                <ReportControllerContext.Provider value={{ identifier }}>
+                    {children}
+                </ReportControllerContext.Provider>
+                <mesh ref={meshRef}>
+                    <boxGeometry args={[0.0001, 0.0001, 0.0001]} />
+                    <meshBasicMaterial color={"blue"} />
+                </mesh>
+            </XRSpace>
+        </>
+    );
+}
+
+
+
+export const controllerPositions: Record<ControllerIdentifier, {
+    position: Vector3;
+    quaternion: Quaternion;
+    id: string | number;
+    online: boolean;
+    object: Object3D;
+}> = {
+    rightHand: {
+        position: new Vector3(),
+        quaternion: new Quaternion(),
+        id: 0,
+        online: false,
+        object: new Object3D(),
+    },
+    leftHand: {
+        position: new Vector3(),
+        quaternion: new Quaternion(),
+        id: 1,
+        online: false,
+        object: new Object3D(),
+    },
+    rightController: {
+        position: new Vector3(),
+        quaternion: new Quaternion(),
+        id: 2,
+        online: false,
+        object: new Object3D(),
+    },
+    leftController: {
+        position: new Vector3(),
+        quaternion: new Quaternion(),
+        id: 3,
+        online: false,
+        object: new Object3D(),
+    },
+};

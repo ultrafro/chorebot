@@ -1,9 +1,11 @@
 'use client'
 import { DataFrame } from "@/app/teletable.model";
-import { XR, XRLayer, XRStore } from "@react-three/xr";
+import { useXRInputSourceStateContext, XR, XRLayer, XRStore } from "@react-three/xr";
 import { Handle, HandleTarget } from "@react-three/handle";
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
+import { ReportController } from "./ReportController";
+import { Clamper } from "./Clamper";
 
 // Import fiber separately (doesn't have WebXR dependencies)
 const Canvas = dynamic(
@@ -19,6 +21,7 @@ const TABLE_LEG_HEIGHT = 0.7;
 const HANDLE_SIZE = 0.06;
 
 function Table({ video }: { video: HTMLVideoElement | null }) {
+
     // Corner positions for handles (on top of the table surface)
     const handlePositions: [number, number, number][] = [
         [-TABLE_WIDTH / 2 + HANDLE_SIZE / 2, TABLE_HEIGHT / 2 + HANDLE_SIZE / 2, -TABLE_DEPTH / 2 + HANDLE_SIZE / 2],
@@ -27,53 +30,48 @@ function Table({ video }: { video: HTMLVideoElement | null }) {
         [TABLE_WIDTH / 2 - HANDLE_SIZE / 2, TABLE_HEIGHT / 2 + HANDLE_SIZE / 2, TABLE_DEPTH / 2 - HANDLE_SIZE / 2],
     ];
 
-    // Leg positions
-    const legPositions: [number, number, number][] = [
-        [-TABLE_WIDTH / 2 + 0.03, -TABLE_LEG_HEIGHT / 2, -TABLE_DEPTH / 2 + 0.03],
-        [TABLE_WIDTH / 2 - 0.03, -TABLE_LEG_HEIGHT / 2, -TABLE_DEPTH / 2 + 0.03],
-        [-TABLE_WIDTH / 2 + 0.03, -TABLE_LEG_HEIGHT / 2, TABLE_DEPTH / 2 - 0.03],
-        [TABLE_WIDTH / 2 - 0.03, -TABLE_LEG_HEIGHT / 2, TABLE_DEPTH / 2 - 0.03],
-    ];
-
     return (
-        <group position={[0, TABLE_LEG_HEIGHT + TABLE_HEIGHT / 2, -0.8]}>
-            <HandleTarget>
-                {/* Table surface */}
-                <mesh position={[0, 0, 0]}>
-                    <boxGeometry args={[TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH]} />
-                    <meshStandardMaterial color="#8B4513" />
-                </mesh>
-
-                {/* Table legs */}
-                {legPositions.map((pos, i) => (
-                    <mesh key={`leg-${i}`} position={pos}>
-                        <boxGeometry args={[0.04, TABLE_LEG_HEIGHT, 0.04]} />
-                        <meshStandardMaterial color="#654321" />
+        <>
+            <ReportController identifier="rightController" >
+                {/* lareg green box */}
+                <Clamper />
+            </ReportController>
+            <ReportController identifier="leftController" >
+                <Clamper />
+            </ReportController>
+            <group position={[0, TABLE_LEG_HEIGHT + TABLE_HEIGHT / 2, -0.8]}>
+                <HandleTarget>
+                    {/* Table surface */}
+                    <mesh position={[0, 0, 0]}>
+                        <boxGeometry args={[TABLE_WIDTH, TABLE_HEIGHT, TABLE_DEPTH]} />
+                        <meshStandardMaterial color="#8B4513" />
                     </mesh>
-                ))}
 
-                {/* Handle cubes at corners */}
-                {handlePositions.map((pos, i) => (
-                    <Handle key={`handle-${i}`} targetRef="from-context">
-                        <mesh position={pos}>
-                            <boxGeometry args={[HANDLE_SIZE, HANDLE_SIZE, HANDLE_SIZE]} />
-                            <meshStandardMaterial color="#ff6b35" />
-                        </mesh>
-                    </Handle>
-                ))}
 
-                {/* Video screen on the table */}
-                {video && (
-                    <XRLayer
-                        position={[0, TABLE_HEIGHT / 2 + 0.01, 0]}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        onClick={() => video?.play()}
-                        scale={0.4}
-                        src={video}
-                    />
-                )}
-            </HandleTarget>
-        </group>
+                    {/* Handle cubes at corners */}
+                    {handlePositions.map((pos, i) => (
+                        <Handle key={`handle-${i}`} targetRef="from-context">
+                            <mesh position={pos}>
+                                <boxGeometry args={[HANDLE_SIZE, HANDLE_SIZE, HANDLE_SIZE]} />
+                                <meshStandardMaterial color="#ff6b35" />
+                            </mesh>
+                        </Handle>
+                    ))}
+
+                    {/* Video screen on the table */}
+                    {video && (
+                        <XRLayer
+                            position={[0, TABLE_HEIGHT / 2 + 0.01, 0]}
+                            rotation={[-Math.PI / 2, 0, 0]}
+                            onClick={() => video?.play()}
+                            scale={0.4}
+                            src={video}
+                        />
+                    )}
+                </HandleTarget>
+
+            </group>
+        </>
     );
 }
 
