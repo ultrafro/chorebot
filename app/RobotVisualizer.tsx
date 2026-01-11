@@ -47,8 +47,8 @@ function OrbitControlsWithTarget({
       focusedRobot === "left"
         ? LeftArmBasePosition
         : focusedRobot === "right"
-        ? RightArmBasePosition
-        : new Vector3(0, 0, 0); // Default to origin if no robot focused
+          ? RightArmBasePosition
+          : new Vector3(0, 0, 0); // Default to origin if no robot focused
 
     // Update the target
     controlsRef.current.target.copy(targetPosition);
@@ -115,67 +115,127 @@ export default function RobotVisualizer({
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 0.8;
         }}
-        // eventSource={document.getElementById("canvas-root") || document.body}
-        // eventPrefix="client"
+      // eventSource={document.getElementById("canvas-root") || document.body}
+      // eventPrefix="client"
       >
-        <>
-          {/* Soft ambient lighting */}
-          <ambientLight intensity={0.6} color="#f8fafc" />
-
-          {/* Main directional light */}
-          <directionalLight
-            position={[8, 8, 5]}
-            intensity={0.5}
-            color="#ffffff"
-            castShadow
-            shadow-mapSize-width={1024}
-            shadow-mapSize-height={1024}
-          />
-
-          {/* Subtle fill light */}
-          <directionalLight
-            position={[-3, 3, -3]}
-            intensity={0.2}
-            color="#f1f5f9"
-          />
-
-          {/* Grid ground */}
-          <Grid
-            args={[50, 50]}
-            cellSize={0.5}
-            cellThickness={0.5}
-            cellColor="#9ca3af"
-            sectionSize={5}
-            sectionThickness={1}
-            sectionColor="#6b7280"
-            fadeDistance={100}
-            fadeStrength={1}
-          />
-
-          {/* Compass at origin */}
-          <Compass />
-
-          <IKRobotFrame
-            currentState={currentState}
-            handId="left"
-            basePosition={LeftArmBasePosition}
-            controlMode={controlMode}
-            externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
-            onJointValuesUpdate={onJointValuesUpdate}
-          />
-
-          <IKRobotFrame
-            currentState={currentState}
-            handId="right"
-            basePosition={RightArmBasePosition}
-            controlMode={controlMode}
-            externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
-            onJointValuesUpdate={onJointValuesUpdate}
-          />
-
-          <OrbitControlsWithTarget focusedRobot={focusedRobot} />
-        </>
+        <RobotVisualizerCore
+          currentState={currentState}
+          controlMode={controlMode}
+          onJointValuesUpdate={onJointValuesUpdate}
+          mobileGoal={mobileGoal}
+          focusedRobot={focusedRobot}
+        />
       </Canvas>
     </div>
   );
+}
+
+
+export function RobotVisualizerXR({
+  currentState,
+  controlMode,
+  onJointValuesUpdate,
+  mobileGoal,
+  focusedRobot,
+}: {
+  currentState: RefObject<Record<string, DataFrame>>;
+  controlMode: RobotVisualizerControlMode;
+  onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
+  mobileGoal?: MobileGoal;
+  focusedRobot?: string | null;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return (
+
+    <RobotVisualizerCore
+      currentState={currentState}
+      controlMode={controlMode}
+      onJointValuesUpdate={onJointValuesUpdate}
+      mobileGoal={mobileGoal}
+      focusedRobot={focusedRobot}
+    />
+  );
+}
+
+
+function RobotVisualizerCore({
+  currentState,
+  controlMode,
+  onJointValuesUpdate,
+  mobileGoal,
+  focusedRobot,
+}: {
+  currentState: RefObject<Record<string, DataFrame>>;
+  controlMode: RobotVisualizerControlMode;
+  onJointValuesUpdate?: (robotId: string, jointValues: number[]) => void;
+  mobileGoal?: MobileGoal;
+  focusedRobot?: string | null;
+}) {
+  return (
+    <>
+      {/* Soft ambient lighting */}
+      <ambientLight intensity={0.6} color="#f8fafc" />
+
+      {/* Main directional light */}
+      <directionalLight
+        position={[8, 8, 5]}
+        intensity={0.5}
+        color="#ffffff"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+      />
+
+      {/* Subtle fill light */}
+      <directionalLight
+        position={[-3, 3, -3]}
+        intensity={0.2}
+        color="#f1f5f9"
+      />
+
+      {/* Grid ground */}
+      <Grid
+        args={[50, 50]}
+        cellSize={0.5}
+        cellThickness={0.5}
+        cellColor="#9ca3af"
+        sectionSize={5}
+        sectionThickness={1}
+        sectionColor="#6b7280"
+        fadeDistance={100}
+        fadeStrength={1}
+      />
+
+      {/* Compass at origin */}
+      <Compass />
+
+      <IKRobotFrame
+        currentState={currentState}
+        handId="left"
+        basePosition={LeftArmBasePosition}
+        controlMode={controlMode}
+        externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
+        onJointValuesUpdate={onJointValuesUpdate}
+      />
+
+      <IKRobotFrame
+        currentState={currentState}
+        handId="right"
+        basePosition={RightArmBasePosition}
+        controlMode={controlMode}
+        externalGoal={mobileGoal?.[focusedRobot ?? "right"]}
+        onJointValuesUpdate={onJointValuesUpdate}
+      />
+
+      <OrbitControlsWithTarget focusedRobot={focusedRobot} />
+    </>
+  )
 }

@@ -82,6 +82,15 @@ export function IKRobotComponent({
       );
 
       if (useDirectValues) {
+        if (!currentState.current[handId]) {
+          currentState.current[handId] = {
+            joints: [],
+            type: "SO101",
+          };
+        }
+        if (!currentState.current[handId].joints) {
+          currentState.current[handId].joints = [];
+        }
         IKRobotClass.setDirectValues(currentState.current[handId].joints);
       }
 
