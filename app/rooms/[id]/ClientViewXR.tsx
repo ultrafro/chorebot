@@ -94,7 +94,20 @@ function ControllerPositionDisplay() {
     );
 }
 
-function Table({ video, onJointValuesUpdate }: { video: HTMLVideoElement | null, onJointValuesUpdate: (robotId: string, joints: number[]) => void }) {
+// Start tracking button component - thin cube at back edge of table
+function StartTrackingButton({ onStart, trackingEnabled }: { onStart: () => void, trackingEnabled: boolean }) {
+    return (
+        <mesh
+            position={[0, TABLE_HEIGHT / 2 + 0.04, -TABLE_DEPTH / 2 - 0.02]}
+            onClick={onStart}
+        >
+            <boxGeometry args={[0.12, 0.06, 0.015]} />
+            <meshStandardMaterial color={trackingEnabled ? "#22c55e" : "#3b82f6"} />
+        </mesh>
+    );
+}
+
+function Table({ video, onJointValuesUpdate, trackingEnabled, onStartTracking }: { video: HTMLVideoElement | null, onJointValuesUpdate: (robotId: string, joints: number[]) => void, trackingEnabled: boolean, onStartTracking: () => void }) {
 
     // Corner positions for handles (on top of the table surface)
     const handlePositions: [number, number, number][] = [
@@ -108,6 +121,10 @@ function Table({ video, onJointValuesUpdate }: { video: HTMLVideoElement | null,
     const mobileGoal = useRef<MobileGoal>({});
     const tableRef = useRef<THREE.Object3D>(null!);
     useFrame(() => {
+        // Only track when enabled
+        if (!trackingEnabled) {
+            return;
+        }
 
         //get global table position
         const tableObj = tableRef.current;
@@ -204,16 +221,19 @@ function Table({ video, onJointValuesUpdate }: { video: HTMLVideoElement | null,
                         </Handle>
                     ))}
 
-                    {/* Video screen on the table */}
+                    {/* Video screen upright at back edge of table */}
                     {video && (
                         <XRLayer
-                            position={[0, TABLE_HEIGHT / 2 + 0.01, 0]}
-                            rotation={[-Math.PI / 2, 0, 0]}
+                            position={[0, TABLE_HEIGHT / 2 + 0.25, -TABLE_DEPTH / 2 - 0.01]}
+                            rotation={[0, 0, 0]}
                             onClick={() => video?.play()}
-                            scale={0.4}
+                            scale={0.3}
                             src={video}
                         />
                     )}
+
+                    {/* Start tracking button at front edge of table */}
+                    <StartTrackingButton onStart={onStartTracking} trackingEnabled={trackingEnabled} />
 
 
                     <group position={[0, 0, TABLE_DEPTH / 2 + 0.05]}>
@@ -253,6 +273,8 @@ export default function ClientViewXR({
     onJointValuesUpdate: (robotId: string, joints: number[]) => void,
     onExitXR: () => void
 }) {
+    const [trackingEnabled, setTrackingEnabled] = useState(false);
+
     const video = useMemo(() => {
         if (!remoteStream) return null;
         const video = document.createElement('video');
@@ -291,7 +313,12 @@ export default function ClientViewXR({
                 <XR store={store}>
                     <ambientLight intensity={0.5} />
                     <directionalLight position={[5, 5, 5]} intensity={0.8} />
-                    <Table video={video} onJointValuesUpdate={onJointValuesUpdate} />
+                    <Table
+                        video={video}
+                        onJointValuesUpdate={onJointValuesUpdate}
+                        trackingEnabled={trackingEnabled}
+                        onStartTracking={() => setTrackingEnabled(prev => !prev)}
+                    />
                 </XR>
             </Canvas>
         </div>
