@@ -104,20 +104,10 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
     // Get enabled streams from multiCamera
     const enabledStreams = multiCamera.getEnabledStreams();
     const enabledStreamIds = new Set(enabledStreams.map(s => s.deviceId));
-    console.log(
-      "[HostCamSync] state",
-      {
-        enabledStreamCount: enabledStreams.length,
-        broadcastCount: currentBroadcastIds.size,
-        enabledStreamIds: Array.from(enabledStreamIds),
-        broadcastIds: Array.from(currentBroadcastIds),
-      }
-    );
 
     // Add new streams that are enabled but not yet broadcasting
     for (const cameraStream of enabledStreams) {
       if (!currentBroadcastIds.has(cameraStream.deviceId)) {
-        console.log("[HostCamSync] add", cameraStream.deviceId, cameraStream.label);
         peer.addCameraStream(cameraStream.deviceId, cameraStream.stream, cameraStream.label);
         lastBroadcastTrackIdsRef.current.set(
           cameraStream.deviceId,
@@ -129,7 +119,6 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
         const nextTrackId = cameraStream.stream.getVideoTracks()[0]?.id || null;
         const lastTrackId = lastBroadcastTrackIdsRef.current.get(cameraStream.deviceId) || null;
         if (nextTrackId && nextTrackId !== lastTrackId) {
-          console.log("[HostCamSync] switch", cameraStream.deviceId, cameraStream.label);
           peer.switchStream(cameraStream.deviceId, cameraStream.stream);
           lastBroadcastTrackIdsRef.current.set(cameraStream.deviceId, nextTrackId);
         }
@@ -139,7 +128,6 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
     // Remove streams that are no longer enabled
     for (const cameraId of currentBroadcastIds) {
       if (!enabledStreamIds.has(cameraId)) {
-        console.log("[HostCamSync] remove", cameraId);
         peer.removeCameraStream(cameraId);
         lastBroadcastTrackIdsRef.current.delete(cameraId);
       }

@@ -97,18 +97,7 @@ export function useMultiVideoCallConnectionClientside(
 
       // Listen for the stream
       call.on("stream", (stream: MediaStream) => {
-        const trackStates = stream
-          .getVideoTracks()
-          .map((t) => ({
-            id: t.id,
-            enabled: t.enabled,
-            muted: t.muted,
-            readyState: t.readyState,
-          }));
-        console.log(
-          `[MultiCam Client] Received stream for camera: ${cameraId}`,
-          trackStates
-        );
+        console.log(`[MultiCam Client] Received stream for camera: ${cameraId}`);
         const existingInfo = incomingCallsRef.current.get(cameraId);
         if (existingInfo) {
           existingInfo.stream = stream;
@@ -195,17 +184,8 @@ export function useMultiVideoCallConnectionClientside(
 
     // The host may respond on this call with their default stream
     call.on("stream", (stream: MediaStream) => {
-      const trackStates = stream
-        .getVideoTracks()
-        .map((t) => ({
-          id: t.id,
-          enabled: t.enabled,
-          muted: t.muted,
-          readyState: t.readyState,
-        }));
       console.log(
-        "[MultiCam Client] Received stream on initial call (default camera)",
-        trackStates
+        "[MultiCam Client] Received stream on initial call (default camera)"
       );
       // Treat this as the default camera stream
       const defaultCameraId = "default";

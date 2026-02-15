@@ -122,15 +122,10 @@ function DraggableVideoPanels({ remoteStreams }: { remoteStreams: RemoteCameraSt
                 video.muted = true;
                 video.setAttribute("playsinline", "true");
                 videoByCameraIdRef.current.set(streamInfo.cameraId, video);
-                console.log("[XRVideo] created video element", streamInfo.cameraId, streamInfo.label);
             }
 
             if (video.srcObject !== streamInfo.stream) {
                 video.srcObject = streamInfo.stream;
-                const trackStates = streamInfo.stream
-                    .getVideoTracks()
-                    .map((t) => ({ id: t.id, enabled: t.enabled, muted: t.muted, readyState: t.readyState }));
-                console.log("[XRVideo] attached stream", streamInfo.cameraId, streamInfo.label, trackStates);
             }
 
             return {
@@ -142,59 +137,11 @@ function DraggableVideoPanels({ remoteStreams }: { remoteStreams: RemoteCameraSt
     }, [remoteStreams]);
 
     useEffect(() => {
-        const cleanups: Array<() => void> = [];
-
         for (const entry of videoEntries) {
-            const { cameraId, label, video } = entry;
-
-            const logVideoState = (eventName: string) => {
-                console.log(
-                    `[XRVideo] ${eventName}`,
-                    cameraId,
-                    label,
-                    {
-                        readyState: video.readyState,
-                        paused: video.paused,
-                        width: video.videoWidth,
-                        height: video.videoHeight,
-                    }
-                );
-            };
-
-            const onLoadedMetadata = () => logVideoState("loadedmetadata");
-            const onCanPlay = () => logVideoState("canplay");
-            const onPlaying = () => logVideoState("playing");
-            const onWaiting = () => logVideoState("waiting");
-            const onStalled = () => logVideoState("stalled");
-            const onError = () => logVideoState("error");
-
-            video.addEventListener("loadedmetadata", onLoadedMetadata);
-            video.addEventListener("canplay", onCanPlay);
-            video.addEventListener("playing", onPlaying);
-            video.addEventListener("waiting", onWaiting);
-            video.addEventListener("stalled", onStalled);
-            video.addEventListener("error", onError);
-
-            video
-                .play()
-                .then(() => logVideoState("play-resolved"))
-                .catch((err) => {
-                    console.warn("[XRVideo] play rejected", cameraId, label, err);
-                });
-
-            cleanups.push(() => {
-                video.removeEventListener("loadedmetadata", onLoadedMetadata);
-                video.removeEventListener("canplay", onCanPlay);
-                video.removeEventListener("playing", onPlaying);
-                video.removeEventListener("waiting", onWaiting);
-                video.removeEventListener("stalled", onStalled);
-                video.removeEventListener("error", onError);
+            entry.video.play().catch(() => {
+                // Best effort playback; user interaction can resume if browser blocks autoplay.
             });
         }
-
-        return () => {
-            cleanups.forEach((cleanup) => cleanup());
-        };
     }, [videoEntries]);
 
     // Cleanup video elements on unmount
