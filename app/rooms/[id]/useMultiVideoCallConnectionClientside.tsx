@@ -28,6 +28,7 @@ export function useMultiVideoCallConnectionClientside(
 
   // Track the initial outgoing call to host
   const outgoingCallRef = useRef<MediaConnection | null>(null);
+  const initialCameraKeyRef = useRef<string | null>(null);
 
   // Track if we've initiated the connection
   const hasInitiatedRef = useRef(false);
@@ -207,8 +208,10 @@ export function useMultiVideoCallConnectionClientside(
         "[MultiCam Client] Received stream on initial call (default camera)",
         trackStates
       );
-      // Treat this as the default camera stream
-      const defaultCameraId = "default";
+      // Use a unique key for the initial call stream to avoid collisions with
+      // real camera IDs (for example a device ID of "default").
+      const defaultCameraId = call.connectionId || "__initial_call__";
+      initialCameraKeyRef.current = defaultCameraId;
       const callInfo: IncomingCallInfo = {
         call,
         cameraId: defaultCameraId,
@@ -221,7 +224,11 @@ export function useMultiVideoCallConnectionClientside(
 
     call.on("close", () => {
       console.log("[MultiCam Client] Initial call closed");
-      incomingCallsRef.current.delete("default");
+      const initialKey = initialCameraKeyRef.current;
+      if (initialKey) {
+        incomingCallsRef.current.delete(initialKey);
+        initialCameraKeyRef.current = null;
+      }
       updateStreamsState();
     });
 
@@ -240,6 +247,7 @@ export function useMultiVideoCallConnectionClientside(
       // Connection dropped, reset state
       console.log("[MultiCam Client] Connection dropped, clearing streams");
       hasInitiatedRef.current = false;
+      initialCameraKeyRef.current = null;
       incomingCallsRef.current.clear();
       setRemoteCameraStreams([]);
     }
@@ -261,6 +269,7 @@ export function useMultiVideoCallConnectionClientside(
         callInfo.call.close();
       });
       incomingCallsRef.current.clear();
+      initialCameraKeyRef.current = null;
 
       hasInitiatedRef.current = false;
     };

@@ -237,6 +237,7 @@ export function useHostActions(
 
   const handleUpdateHostPeerId = async (newHostPeerId: string) => {
     if (!user || !roomData) return;
+    if (!newHostPeerId) return;
     setIsProcessingRequest(true);
     try {
       const response = await fetch("/api/updateHostPeerId", {
@@ -251,6 +252,19 @@ export function useHostActions(
           newHostPeerId: newHostPeerId,
         }),
       });
+      if (!response.ok) {
+        let errorBody: any = null;
+        try {
+          errorBody = await response.json();
+        } catch {
+          // no-op
+        }
+        console.error("Failed to update host peer id", {
+          status: response.status,
+          body: errorBody,
+          newHostPeerId,
+        });
+      }
     } catch (error) {
       console.error("Error updating host peer id:", error);
     } finally {

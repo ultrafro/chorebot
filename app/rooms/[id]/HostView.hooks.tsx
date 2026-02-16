@@ -26,10 +26,26 @@ export function useAutoApproveRequestWithPassword(roomData: RoomData, handleAppr
 }
 
 export function useUpdateHostPeerIdWhenItChanges(roomData: RoomData, peer: UsePeerResult, handleUpdateHostPeerId: (peerId: string) => void) {
+    const lastSubmittedPeerIdRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        // Reset de-dup state when room changes.
+        lastSubmittedPeerIdRef.current = null;
+    }, [roomData.roomId]);
+
     useEffect(() => {
         const currentHostPeerId = peer.peer?.id;
+        // Avoid posting empty IDs and avoid duplicate submissions in strict-mode
+        // dev renders.
+        if (!currentHostPeerId) {
+            return;
+        }
+        if (lastSubmittedPeerIdRef.current === currentHostPeerId) {
+            return;
+        }
         if (currentHostPeerId !== roomData.hostPeerId) {
-            handleUpdateHostPeerId(currentHostPeerId || "");
+            lastSubmittedPeerIdRef.current = currentHostPeerId;
+            handleUpdateHostPeerId(currentHostPeerId);
         }
     }, [roomData.hostPeerId, peer.peer?.id, handleUpdateHostPeerId]);
 }
