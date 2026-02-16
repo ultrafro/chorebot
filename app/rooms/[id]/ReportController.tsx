@@ -1,16 +1,68 @@
 import { useXRInputSourceState } from "@react-three/xr";
 
 import {
-    useXRAnchor,
     XRSpace,
-    useXRInputSourceEvent,
-    XR,
 } from "@react-three/xr";
-import { createContext, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Mesh, Object3D, Quaternion, Vector3 } from "three";
+import { CanvasTexture, Euler } from "three";
 import { useFrame } from "@react-three/fiber";
 import { ControllerIdentifier, getAAndB, ReportControllerContext } from "./ReportController.model";
+import * as THREE from "three";
 
+const LABEL_WIDTH = 128;
+const LABEL_HEIGHT = 64;
+
+function ControllerAngleLabel({ localXAngleDeg }: { localXAngleDeg: number }) {
+    const canvas = useMemo(() => {
+        const c = document.createElement("canvas");
+        c.width = LABEL_WIDTH;
+        c.height = LABEL_HEIGHT;
+        return c;
+    }, []);
+    const texture = useMemo(() => {
+        const t = new CanvasTexture(canvas);
+        t.needsUpdate = true;
+        return t;
+    }, [canvas]);
+    useFrame(() => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const w = LABEL_WIDTH;
+        const h = LABEL_HEIGHT;
+        ctx.clearRect(0, 0, w, h);
+        // background
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.strokeStyle = "#666";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(0, 0, w, h);
+        ctx.fill();
+        ctx.stroke();
+        // text
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 24px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`X: ${localXAngleDeg.toFixed(1)}°`, w / 2, h / 2);
+        texture.needsUpdate = true;
+    });
+
+    return (
+        <group position={[0, 0.05 / 2 + 0.03, 0]}>
+            <mesh>
+                <planeGeometry args={[0.12, 0.06]} />
+                <meshBasicMaterial
+                    map={texture}
+                    transparent
+                    opacity={1}
+                    side={THREE.DoubleSide}
+                    depthWrite={false}
+                />
+            </mesh>
+        </group>
+    );
+}
 
 export function ReportController({
     identifier,
@@ -35,6 +87,8 @@ export function ReportController({
     const inputState = useXRInputSourceState(a as any, b as any);
 
     const meshRef = useRef<Mesh>(null!);
+    const [localXAngleDeg, setLocalXAngleDeg] = useState(0);
+    const lastAngleUpdateTime = useRef(0);
 
     useEffect(() => {
         const valid = !!inputState?.inputSource?.targetRaySpace;
@@ -69,6 +123,13 @@ export function ReportController({
 
         const triggerValue = inputState?.gamepad?.['xr-standard-trigger']?.button ?? 0;
         thing.triggerValue = triggerValue;
+
+        // Update local X angle display (throttled, same as ControllerPositionDisplay in ClientViewXR)
+        if (Date.now() - lastAngleUpdateTime.current >= 100) {
+            lastAngleUpdateTime.current = Date.now();
+            const euler = new Euler().setFromQuaternion(thing.quaternion);
+            setLocalXAngleDeg((euler.x * 180) / Math.PI);
+        }
     });
 
     if (!inputState?.inputSource?.targetRaySpace) {
@@ -82,9 +143,10 @@ export function ReportController({
                     {children}
                 </ReportControllerContext.Provider>
                 <mesh ref={meshRef}>
-                    {/* <boxGeometry args={[0.05, 0.05, 0.05]} />
-                    <meshBasicMaterial color={"blue"} /> */}
+                    <boxGeometry args={[0.05, 0.05, 0.05]} />
+                    <meshBasicMaterial color={"blue"} />
                 </mesh>
+                <ControllerAngleLabel localXAngleDeg={localXAngleDeg} />
             </XRSpace>
         </>
     );
