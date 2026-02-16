@@ -48,6 +48,21 @@ export function useMultiCamera(): UseMultiCameraResult {
   const cameraStartInFlightRef = useRef<
     Map<string, Promise<MediaStream | null>>
   >(new Map());
+  // Some browsers/drivers are flaky when multiple getUserMedia calls start
+  // concurrently. Serialize starts to improve multi-camera reliability.
+  const cameraStartQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const enqueueCameraStart = useCallback(
+    async <T,>(task: () => Promise<T>): Promise<T> => {
+      const run = cameraStartQueueRef.current.then(task, task);
+      cameraStartQueueRef.current = run.then(
+        () => undefined,
+        () => undefined
+      );
+      return run;
+    },
+    []
+  );
 
   // Keep streamsRef in sync with state
   useEffect(() => {
@@ -107,8 +122,21 @@ export function useMultiCamera(): UseMultiCameraResult {
 
     try {
       const deviceList = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = deviceList
-        .filter((device) => device.kind === "videoinput")
+      const allVideoInputs = deviceList.filter(
+        (device) => device.kind === "videoinput"
+      );
+
+      console.log(
+        "[MultiCamera] enumerateDevices videoinput",
+        allVideoInputs.map((device, index) => ({
+          index,
+          deviceId: device.deviceId,
+          label: device.label,
+          groupId: device.groupId,
+        }))
+      );
+
+      const videoDevices = allVideoInputs
         .map((device, index) => ({
           deviceId: device.deviceId,
           label:
@@ -170,55 +198,87 @@ export function useMultiCamera(): UseMultiCameraResult {
 
       const startPromise = (async (): Promise<MediaStream | null> => {
         try {
-          const getUserMediaWithTimeout = async (
-            constraints: MediaStreamConstraints,
-            timeoutMs: number
-          ): Promise<MediaStream> => {
-            const timeoutPromise = new Promise<never>((_, reject) => {
-              const id = window.setTimeout(() => {
-                clearTimeout(id);
-                reject(new Error("Timed out waiting for camera access"));
-              }, timeoutMs);
-            });
-            return Promise.race([
-              navigator.mediaDevices.getUserMedia(constraints),
-              timeoutPromise,
-            ]);
-          };
+          const newStream = await enqueueCameraStart(async () => {
+            const getUserMediaWithTimeout = async (
+              constraints: MediaStreamConstraints,
+              timeoutMs: number
+            ): Promise<MediaStream> => {
+              const timeoutPromise = new Promise<never>((_, reject) => {
+                const id = window.setTimeout(() => {
+                  clearTimeout(id);
+                  reject(new Error("Timed out waiting for camera access"));
+                }, timeoutMs);
+              });
+              return Promise.race([
+                navigator.mediaDevices.getUserMedia(constraints),
+                timeoutPromise,
+              ]);
+            };
 
-          let newStream: MediaStream | null = null;
-          let primaryError: Error | null = null;
-
-          try {
-            newStream = await getUserMediaWithTimeout(
+            const attemptConstraints: MediaStreamConstraints[] = [
+              {
+                video: {
+                  deviceId: { exact: deviceId },
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                  frameRate: { ideal: 30, max: 30 },
+                },
+                audio: false,
+              },
+              {
+                video: {
+                  deviceId: { exact: deviceId },
+                  width: { ideal: 640 },
+                  height: { ideal: 480 },
+                  frameRate: { ideal: 15, max: 24 },
+                },
+                audio: false,
+              },
               {
                 video: {
                   deviceId: { exact: deviceId },
                 },
                 audio: false,
               },
-              12000
-            );
-          } catch (err) {
-            primaryError = err as Error;
-            // Retry once with generic video constraints. Some browsers/devices
-            // can fail exact device selection while still allowing camera access.
-            try {
-              newStream = await getUserMediaWithTimeout(
-                {
-                  video: true,
-                  audio: false,
+              {
+                video: {
+                  deviceId,
                 },
-                12000
-              );
-            } catch (fallbackErr) {
-              throw primaryError || (fallbackErr as Error);
-            }
-          }
+                audio: false,
+              },
+            ];
 
-          if (!newStream) {
-            throw new Error("Camera stream could not be created");
-          }
+            const attemptErrors: string[] = [];
+            for (let i = 0; i < attemptConstraints.length; i++) {
+              try {
+                const startedStream = await getUserMediaWithTimeout(
+                  attemptConstraints[i],
+                  15000
+                );
+                const track = startedStream.getVideoTracks()[0];
+                const settings = track?.getSettings();
+                console.log("[MultiCamera] started", {
+                  deviceId,
+                  label,
+                  attempt: i + 1,
+                  trackId: track?.id || null,
+                  trackSettings: settings || null,
+                });
+                return startedStream;
+              } catch (err) {
+                const asErr = err as Error;
+                attemptErrors.push(
+                  `attempt ${i + 1}: ${asErr.name || "Error"} - ${asErr.message}`
+                );
+                // Short cool-down can help with device-driver contention.
+                await new Promise((r) => window.setTimeout(r, 250));
+              }
+            }
+
+            throw new Error(
+              `Unable to open camera ${label}. ${attemptErrors.join(" | ")}`
+            );
+          });
 
           const isEnabled = enabledCameraIdsRef.current.includes(deviceId);
 
@@ -237,6 +297,11 @@ export function useMultiCamera(): UseMultiCameraResult {
 
           return newStream;
         } catch (err) {
+          console.error("[MultiCamera] Failed to start", {
+            deviceId,
+            label,
+            error: err,
+          });
           setError(
             `Failed to start camera ${deviceId}: ${(err as Error).message}`
           );
@@ -249,7 +314,7 @@ export function useMultiCamera(): UseMultiCameraResult {
       cameraStartInFlightRef.current.set(deviceId, startPromise);
       return startPromise;
     },
-    [devices]
+    [devices, enqueueCameraStart]
   );
 
   // Stop a specific camera
@@ -307,15 +372,16 @@ export function useMultiCamera(): UseMultiCameraResult {
         devicesRef.current.some((d) => d.deviceId === id)
       );
 
-      const startPromises = validEnabledIds.map((deviceId) =>
-        startCamera(deviceId).catch((err) => {
+      const failedIds: string[] = [];
+      for (const deviceId of validEnabledIds) {
+        const result = await startCamera(deviceId).catch((err) => {
           console.error(`Failed to start camera ${deviceId}:`, err);
           return null;
-        })
-      );
-
-      const results = await Promise.all(startPromises);
-      const failedIds = validEnabledIds.filter((_, idx) => !results[idx]);
+        });
+        if (!result) {
+          failedIds.push(deviceId);
+        }
+      }
 
       // Avoid "Starting..." getting stuck forever when camera start fails.
       if (failedIds.length > 0) {
@@ -379,6 +445,24 @@ export function useMultiCamera(): UseMultiCameraResult {
       });
     }
   }, [enabledCameraIds, initializeCameras, startAllEnabledCameras]);
+
+  // Refresh device list when hardware changes (plug/unplug, OS re-enumeration).
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      return;
+    }
+
+    const onDeviceChange = () => {
+      getDevices().catch((err) => {
+        console.error("[MultiCamera] Failed to refresh devices:", err);
+      });
+    };
+
+    navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
+    };
+  }, [getDevices]);
 
   // Cleanup streams on unmount
   useEffect(() => {
