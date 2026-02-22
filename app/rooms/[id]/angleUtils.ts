@@ -19,7 +19,7 @@ export function calculateLocalXAngleDeg(worldQuaternion: Quaternion) {
     const forwardMagnitude = forward.length();
 
     //calculate angle
-    const angle = Math.asin(forwardY / forwardMagnitude);
+    const angle = -Math.asin(forwardY / forwardMagnitude);
 
     const angleDeg = angle * 180 / Math.PI;
     return angleDeg;
