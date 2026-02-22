@@ -14,18 +14,12 @@ export function calculateLocalXAngleDeg(worldQuaternion: Quaternion) {
 
     //get y component of forward vector
     const forwardY = forward.y;
+    const forwardOntoPlane = new Vector2(forward.x, forward.z);
+    const forwardOntoPlaneMagnitude = forwardOntoPlane.length();
 
-    //get magnitude of forward vector
-    const forwardMagnitude = forward.length();
-
-    //calculate angle
-    const angle = -Math.asin(forwardY / forwardMagnitude);
-
-    const angleDeg = angle * 180 / Math.PI;
+    const angle = Math.atan2(forwardY, forwardOntoPlaneMagnitude);
+    const angleDeg = -angle * 180 / Math.PI;
     return angleDeg;
-
-
-
 
     // //get forward projected onto Y-Z plane
     // const forwardProjected = (new Vector2(forward.z, forward.y)).normalize();
@@ -69,9 +63,13 @@ export function calculateLocalZAngleDeg(worldQuaternion: Quaternion) {
     const p = globalUp.clone().cross(forward).normalize();
     const d = up.dot(p);
     const upMagnitude = up.length();
-    const angle = Math.asin(d / upMagnitude);
+    const h = up.dot(globalUp);
+    const angle = Math.atan2(d, h);
+    // const angle = Math.asin(d / upMagnitude);
     const angleDeg = angle * 180 / Math.PI;
     return angleDeg;
+    // const sign = Math.sign(up.dot(globalUp));
+    // return sign > 0 ? angleDeg : 180 - angleDeg;
 
 
 
