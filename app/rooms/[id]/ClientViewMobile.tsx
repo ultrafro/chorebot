@@ -247,6 +247,14 @@ function MobileRemoteViewSection({
   const canGoLeft = currentCameraIndex > 0;
   const canGoRight = currentCameraIndex < remoteStreams.length - 1;
 
+  const stereoLabel = currentStream?.stereoLayout === "mono"
+    ? null
+    : currentStream?.stereoLayout === "stereo-left-right"
+      ? "LR"
+      : currentStream?.stereoLayout === "stereo-top-bottom"
+        ? "TB"
+        : null;
+
   useEffect(() => {
     if (videoRef.current && currentStream) {
       videoRef.current.srcObject = currentStream.stream;
@@ -291,9 +299,16 @@ function MobileRemoteViewSection({
                 />
               </svg>
             </button>
-            <h3 className="text-xs font-medium text-gray-700 truncate px-1">
-              {currentStream?.label ?? "No Camera"}
-            </h3>
+            <div className="flex items-center gap-1 px-1">
+              <h3 className="text-xs font-medium text-gray-700 truncate">
+                {currentStream?.label ?? "No Camera"}
+              </h3>
+              {stereoLabel && (
+                <span className="text-[10px] px-1 py-0.5 bg-purple-600 text-white rounded">
+                  {stereoLabel}
+                </span>
+              )}
+            </div>
             <button
               onClick={handleNextCamera}
               disabled={!canGoRight}
@@ -316,9 +331,16 @@ function MobileRemoteViewSection({
             </button>
           </>
         ) : (
-          <h3 className="text-xs font-medium text-gray-700">
-            {currentStream?.label ?? "Remote Feed"}
-          </h3>
+          <div className="flex items-center gap-1">
+            <h3 className="text-xs font-medium text-gray-700">
+              {currentStream?.label ?? "Remote Feed"}
+            </h3>
+            {stereoLabel && (
+              <span className="text-[10px] px-1 py-0.5 bg-purple-600 text-white rounded">
+                {stereoLabel}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

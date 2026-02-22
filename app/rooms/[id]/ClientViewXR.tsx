@@ -29,8 +29,6 @@ const HANDLE_SIZE = 0.06;
 
 const TABLE_OFFSET = new Vector3(0, TABLE_LEG_HEIGHT + TABLE_HEIGHT / 2, -0.8);
 
-const useThumbstick = true;
-
 // Debug component that shows a green cube at left controller position
 function DebugLeftControllerCube({ targetRef }: { targetRef: React.RefObject<THREE.Object3D> }) {
     const meshRef = useRef<THREE.Mesh>(null);
@@ -102,11 +100,24 @@ function ControllerPositionDisplay() {
 function StartTrackingButton({ onStart, trackingEnabled }: { onStart: () => void, trackingEnabled: boolean }) {
     return (
         <mesh
-            position={[0, TABLE_HEIGHT / 2 + 0.04, -TABLE_DEPTH / 2 - 0.02]}
+            position={[-0.07, TABLE_HEIGHT / 2 + 0.04, -TABLE_DEPTH / 2 - 0.02]}
             onClick={onStart}
         >
             <boxGeometry args={[0.12, 0.06, 0.015]} />
             <meshStandardMaterial color={trackingEnabled ? "#22c55e" : "#3b82f6"} />
+        </mesh>
+    );
+}
+
+// Thumbstick toggle button - next to tracking button
+function ThumbstickToggleButton({ onToggle, useThumbstick }: { onToggle: () => void, useThumbstick: boolean }) {
+    return (
+        <mesh
+            position={[0.07, TABLE_HEIGHT / 2 + 0.04, -TABLE_DEPTH / 2 - 0.02]}
+            onClick={onToggle}
+        >
+            <boxGeometry args={[0.12, 0.06, 0.015]} />
+            <meshStandardMaterial color={useThumbstick ? "#a855f7" : "#6b7280"} />
         </mesh>
     );
 }
@@ -133,13 +144,14 @@ function DraggableVideoPanels({ remoteStreams }: { remoteStreams: RemoteCameraSt
                 const trackStates = streamInfo.stream
                     .getVideoTracks()
                     .map((t) => ({ id: t.id, enabled: t.enabled, muted: t.muted, readyState: t.readyState }));
-                console.log("[XRVideo] attached stream", streamInfo.cameraId, streamInfo.label, trackStates);
+                console.log("[XRVideo] attached stream", streamInfo.cameraId, streamInfo.label, "stereo:", streamInfo.stereoLayout, trackStates);
             }
 
             return {
                 cameraId: streamInfo.cameraId,
                 label: streamInfo.label,
                 video,
+                stereoLayout: streamInfo.stereoLayout,
             };
         });
     }, [remoteStreams]);
@@ -227,6 +239,7 @@ function DraggableVideoPanels({ remoteStreams }: { remoteStreams: RemoteCameraSt
                             <XRLayer
                                 src={videoEntries[index]?.video}
                                 scale={0.25}
+                                layout={videoEntries[index]?.stereoLayout || "mono"}
                                 onClick={() => videoEntries[index]?.video?.play()}
                             />
                         </group>
@@ -237,7 +250,7 @@ function DraggableVideoPanels({ remoteStreams }: { remoteStreams: RemoteCameraSt
     );
 }
 
-function Table({ remoteStreams, onJointValuesUpdate, trackingEnabled, onStartTracking }: { remoteStreams: RemoteCameraStream[], onJointValuesUpdate: (robotId: string, joints: number[]) => void, trackingEnabled: boolean, onStartTracking: () => void }) {
+function Table({ remoteStreams, onJointValuesUpdate, trackingEnabled, onStartTracking, useThumbstick, onToggleThumbstick }: { remoteStreams: RemoteCameraStream[], onJointValuesUpdate: (robotId: string, joints: number[]) => void, trackingEnabled: boolean, onStartTracking: () => void, useThumbstick: boolean, onToggleThumbstick: () => void }) {
 
     // Corner positions for handles (on top of the table surface)
     const handlePositions: [number, number, number][] = [
@@ -384,6 +397,9 @@ function Table({ remoteStreams, onJointValuesUpdate, trackingEnabled, onStartTra
                     {/* Start tracking button at front edge of table */}
                     <StartTrackingButton onStart={onStartTracking} trackingEnabled={trackingEnabled} />
 
+                    {/* Thumbstick toggle button */}
+                    <ThumbstickToggleButton onToggle={onToggleThumbstick} useThumbstick={useThumbstick} />
+
 
                     <group position={[0, 0, TABLE_DEPTH / 2 + 0.05]}>
                         <group ref={tableRef} />
@@ -423,7 +439,7 @@ export default function ClientViewXR({
     onExitXR: () => void
 }) {
     const [trackingEnabled, setTrackingEnabled] = useState(false);
-
+    const [useThumbstick, setUseThumbstick] = useState(true);
 
     if (!store) {
         return <div>Loading...</div>
@@ -458,6 +474,8 @@ export default function ClientViewXR({
                         onJointValuesUpdate={onJointValuesUpdate}
                         trackingEnabled={trackingEnabled}
                         onStartTracking={() => setTrackingEnabled(prev => !prev)}
+                        useThumbstick={useThumbstick}
+                        onToggleThumbstick={() => setUseThumbstick(prev => !prev)}
                     />
                 </XR>
             </Canvas>

@@ -10,6 +10,7 @@ import {
   DefaultDirectValues,
   DefaultLeftHandDetection,
   DefaultRightHandDetection,
+  StereoLayout,
 } from "@/app/teletable.model";
 import { useUpdateHandsFromClientData } from "./useUpdateHandsFromClient";
 import { useRobotWebSocket } from "@/app/hooks/useRobotWebSocket";
@@ -35,6 +36,8 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
   const [isTestControlEnabled, setIsTestControlEnabled] = useState(false);
   const [roomPassword, setRoomPassword] = useState(roomData.roomPW || "");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  // Track stereo layout per camera
+  const [stereoLayouts, setStereoLayouts] = useState<Map<string, StereoLayout>>(new Map());
   // Initialize robot WebSocket connection
   const robotWS = useRobotWebSocket();
 
@@ -117,8 +120,9 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
     // Add new streams that are enabled but not yet broadcasting
     for (const cameraStream of enabledStreams) {
       if (!currentBroadcastIds.has(cameraStream.deviceId)) {
-        console.log("[HostCamSync] add", cameraStream.deviceId, cameraStream.label);
-        peer.addCameraStream(cameraStream.deviceId, cameraStream.stream, cameraStream.label);
+        const layout = stereoLayouts.get(cameraStream.deviceId) || "mono";
+        console.log("[HostCamSync] add", cameraStream.deviceId, cameraStream.label, "stereo:", layout);
+        peer.addCameraStream(cameraStream.deviceId, cameraStream.stream, cameraStream.label, layout);
         lastBroadcastTrackIdsRef.current.set(
           cameraStream.deviceId,
           cameraStream.stream.getVideoTracks()[0]?.id || null
@@ -144,7 +148,18 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
         lastBroadcastTrackIdsRef.current.delete(cameraId);
       }
     }
-  }, [multiCamera.streams, multiCamera.enabledCameraIds, peer.peer]);
+  }, [multiCamera.streams, multiCamera.enabledCameraIds, peer.peer, stereoLayouts]);
+
+  // Handler to update stereo layout for a camera
+  const handleStereoLayoutChange = useCallback((deviceId: string, layout: StereoLayout) => {
+    setStereoLayouts(prev => {
+      const next = new Map(prev);
+      next.set(deviceId, layout);
+      return next;
+    });
+    // Update the peer's stored layout (clients will get it on reconnect)
+    peer.updateStereoLayout(deviceId, layout);
+  }, [peer]);
 
   // Update video preview elements when streams change
   useEffect(() => {
@@ -464,7 +479,7 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
                         )}
                       </div>
 
-                      {/* Camera Label */}
+                      {/* Camera Label and Stereo Layout */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground truncate">
                           {device.label}
@@ -472,6 +487,17 @@ export default function HostView({ roomData }: { roomData: RoomData }) {
                         <p className="text-xs text-foreground/50">
                           {isEnabled ? (hasStream ? "Broadcasting" : "Starting...") : "Not broadcasting"}
                         </p>
+                        {isEnabled && hasStream && (
+                          <select
+                            value={stereoLayouts.get(device.deviceId) || "mono"}
+                            onChange={(e) => handleStereoLayoutChange(device.deviceId, e.target.value as StereoLayout)}
+                            className="mt-1 w-full px-2 py-1 bg-background border border-foreground/20 rounded text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            <option value="mono">Mono</option>
+                            <option value="stereo-left-right">Stereo (Side-by-Side)</option>
+                            <option value="stereo-top-bottom">Stereo (Top-Bottom)</option>
+                          </select>
+                        )}
                       </div>
                     </div>
                   );
