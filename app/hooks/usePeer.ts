@@ -1,10 +1,12 @@
 import Peer, { DataConnection, MediaConnection } from "peerjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { generateFakeVideoStream } from "../rooms/[id]/generateFakeVideoStream";
+import { StereoLayout } from "../teletable.model";
 
 export interface CameraStreamInfo {
   stream: MediaStream;
   label: string;
+  stereoLayout: StereoLayout;
 }
 
 export interface UsePeerResult {
@@ -14,11 +16,15 @@ export interface UsePeerResult {
   // Switch a specific camera stream (replaces track in existing connection)
   switchStream: (cameraId: string, stream: MediaStream) => void;
   // Add a camera stream for broadcast to all connected clients
-  addCameraStream: (cameraId: string, stream: MediaStream, label: string) => void;
+  addCameraStream: (cameraId: string, stream: MediaStream, label: string, stereoLayout?: StereoLayout) => void;
+  // Update stereo layout for a camera stream
+  updateStereoLayout: (cameraId: string, stereoLayout: StereoLayout) => void;
   // Remove a camera stream from broadcast
   removeCameraStream: (cameraId: string) => void;
   // Get list of broadcast camera IDs
   getBroadcastCameraIds: () => string[];
+  // Get camera info including stereo layout
+  getCameraInfo: (cameraId: string) => CameraStreamInfo | undefined;
 }
 
 export function usePeer(
@@ -38,9 +44,9 @@ export function usePeer(
 
   // Initialize with default stream if provided (backward compatibility)
   if (defaultStream && defaultCameraId && !localStreams.current.has(defaultCameraId)) {
-    localStreams.current.set(defaultCameraId, { stream: defaultStream, label: "Default Camera" });
+    localStreams.current.set(defaultCameraId, { stream: defaultStream, label: "Default Camera", stereoLayout: "mono" });
   } else if (defaultStream && !localStreams.current.has("default")) {
-    localStreams.current.set("default", { stream: defaultStream, label: "Default Camera" });
+    localStreams.current.set("default", { stream: defaultStream, label: "Default Camera", stereoLayout: "mono" });
   }
 
   const resetPeer = useCallback(async () => {
@@ -141,38 +147,26 @@ export function usePeer(
         return;
       }
 
-      // Answer the initial call with the first camera stream
-      // Note: PeerJS answer() doesn't support metadata, client will use "default" as camera ID
-      const [firstCameraId, firstCameraInfo] = Array.from(streams.entries())[0];
-      call.answer(firstCameraInfo.stream);
-      console.log(`Answered initial call with camera: ${firstCameraId} (${firstCameraInfo.label}) - client will receive as "default"`);
+      // Answer the initial call with fake stream (just to complete the handshake)
+      // We'll call the client back with all cameras including metadata
+      const fakeStream = new MediaStream();
+      call.answer(fakeStream);
+      console.log(`Answered initial call from ${clientPeerId} with fake stream, will call back with all cameras`);
 
-      // Store this connection
       const clientMap = clientConnections.current.get(clientPeerId)!;
-      clientMap.set(firstCameraId, call);
 
-      // Handle call close
-      call.on("close", () => {
-        console.log(`Call closed for camera ${firstCameraId} with client ${clientPeerId}`);
-        clientMap.delete(firstCameraId);
-        if (clientMap.size === 0) {
-          clientConnections.current.delete(clientPeerId);
-        }
-      });
-
-      // For additional cameras, call the client back with each stream
-      const remainingCameras = Array.from(streams.entries()).slice(1);
-      for (const [cameraId, cameraInfo] of remainingCameras) {
-        console.log(`Calling client ${clientPeerId} with additional camera: ${cameraId} (${cameraInfo.label})`);
-        const additionalCall = peer.call(clientPeerId, cameraInfo.stream, {
-          metadata: { cameraId, label: cameraInfo.label }
+      // Call the client with ALL cameras including metadata (so stereo layout is transmitted)
+      for (const [cameraId, cameraInfo] of streams.entries()) {
+        console.log(`Calling client ${clientPeerId} with camera: ${cameraId} (${cameraInfo.label}) stereo: ${cameraInfo.stereoLayout}`);
+        const outgoingCall = peer.call(clientPeerId, cameraInfo.stream, {
+          metadata: { cameraId, label: cameraInfo.label, stereoLayout: cameraInfo.stereoLayout }
         });
 
         // Store this connection
-        clientMap.set(cameraId, additionalCall);
+        clientMap.set(cameraId, outgoingCall);
 
         // Handle call close
-        additionalCall.on("close", () => {
+        outgoingCall.on("close", () => {
           console.log(`Call closed for camera ${cameraId} with client ${clientPeerId}`);
           clientMap.delete(cameraId);
           if (clientMap.size === 0) {
@@ -206,7 +200,7 @@ export function usePeer(
       if (existing) {
         localStreams.current.set(cameraId, { ...existing, stream });
       } else {
-        localStreams.current.set(cameraId, { stream, label: cameraId });
+        localStreams.current.set(cameraId, { stream, label: cameraId, stereoLayout: "mono" });
       }
 
       // Replace track in all client connections for this camera
@@ -229,11 +223,11 @@ export function usePeer(
 
   // Add a new camera stream for broadcast
   const addCameraStream = useCallback(
-    (cameraId: string, stream: MediaStream, label: string) => {
-      console.log(`Adding camera stream: ${cameraId} (${label})`);
+    (cameraId: string, stream: MediaStream, label: string, stereoLayout: StereoLayout = "mono") => {
+      console.log(`Adding camera stream: ${cameraId} (${label}) stereo: ${stereoLayout}`);
 
       // Store the stream
-      localStreams.current.set(cameraId, { stream, label });
+      localStreams.current.set(cameraId, { stream, label, stereoLayout });
 
       // Call all connected clients with this new camera stream
       if (peer) {
@@ -242,7 +236,7 @@ export function usePeer(
           if (!cameraMap.has(cameraId)) {
             console.log(`Calling client ${clientPeerId} with new camera: ${cameraId}`);
             const call = peer.call(clientPeerId, stream, {
-              metadata: { cameraId, label }
+              metadata: { cameraId, label, stereoLayout }
             });
 
             cameraMap.set(cameraId, call);
@@ -287,6 +281,30 @@ export function usePeer(
     return Array.from(localStreams.current.keys());
   }, []);
 
+  // Get camera info including stereo layout
+  const getCameraInfo = useCallback((cameraId: string) => {
+    return localStreams.current.get(cameraId);
+  }, []);
+
+  // Update stereo layout for a camera stream (requires reconnecting to clients)
+  const updateStereoLayout = useCallback(
+    (cameraId: string, stereoLayout: StereoLayout) => {
+      const existing = localStreams.current.get(cameraId);
+      if (!existing) {
+        console.warn(`Cannot update stereo layout: camera ${cameraId} not found`);
+        return;
+      }
+
+      console.log(`Updating stereo layout for camera ${cameraId} to ${stereoLayout}`);
+      localStreams.current.set(cameraId, { ...existing, stereoLayout });
+
+      // Note: To propagate the new layout to clients, we need to close and reopen connections
+      // For now, clients will need to reconnect to get the new layout
+      // A more sophisticated implementation would use a data channel to send layout updates
+    },
+    []
+  );
+
   const result: UsePeerResult = useMemo(() => {
     return {
       peer,
@@ -294,10 +312,12 @@ export function usePeer(
       resetPeer,
       switchStream,
       addCameraStream,
+      updateStereoLayout,
       removeCameraStream,
       getBroadcastCameraIds,
+      getCameraInfo,
     };
-  }, [peer, isConnected, resetPeer, switchStream, addCameraStream, removeCameraStream, getBroadcastCameraIds]);
+  }, [peer, isConnected, resetPeer, switchStream, addCameraStream, updateStereoLayout, removeCameraStream, getBroadcastCameraIds, getCameraInfo]);
 
   return result;
 }

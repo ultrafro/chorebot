@@ -70,3 +70,6 @@ export type ExternalGoal = {
 };
 
 export type MobileGoal = Record<string, ExternalGoal>;
+
+// Stereo layout options for camera streams
+export type StereoLayout = "mono" | "stereo-left-right" | "stereo-top-bottom";

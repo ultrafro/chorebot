@@ -136,10 +136,23 @@ function SingleCameraView({
     }
   }, [cameraStream.stream, cameraStream.label]);
 
+  const stereoLabel = cameraStream.stereoLayout === "mono"
+    ? null
+    : cameraStream.stereoLayout === "stereo-left-right"
+      ? "Stereo LR"
+      : "Stereo TB";
+
   return (
     <div className="bg-background rounded-lg border border-foreground/10 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-foreground/5 border-b border-foreground/10">
-        <span className="text-sm font-medium text-foreground">{cameraStream.label}</span>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-foreground">{cameraStream.label}</span>
+          {stereoLabel && (
+            <span className="text-xs px-1.5 py-0.5 bg-purple-600 text-white rounded">
+              {stereoLabel}
+            </span>
+          )}
+        </div>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 rounded-full bg-green-500"></div>
           <span className="text-xs text-foreground/70">Active</span>

@@ -1,4 +1,5 @@
 import { UsePeerResult } from "@/app/hooks/usePeer";
+import { StereoLayout } from "@/app/teletable.model";
 import { MediaConnection } from "peerjs";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -6,6 +7,7 @@ export interface RemoteCameraStream {
   cameraId: string;
   label: string;
   stream: MediaStream;
+  stereoLayout: StereoLayout;
 }
 
 interface IncomingCallInfo {
@@ -13,6 +15,7 @@ interface IncomingCallInfo {
   cameraId: string;
   label: string;
   stream: MediaStream | null;
+  stereoLayout: StereoLayout;
 }
 
 export function useMultiVideoCallConnectionClientside(
@@ -66,6 +69,7 @@ export function useMultiVideoCallConnectionClientside(
           cameraId: callInfo.cameraId,
           label: callInfo.label,
           stream: callInfo.stream,
+          stereoLayout: callInfo.stereoLayout,
         });
       }
     });
@@ -75,12 +79,13 @@ export function useMultiVideoCallConnectionClientside(
   // Handle an incoming call from the host
   const handleIncomingCall = useCallback(
     (call: MediaConnection) => {
-      const metadata = call.metadata as { cameraId?: string; label?: string };
+      const metadata = call.metadata as { cameraId?: string; label?: string; stereoLayout?: StereoLayout };
       const cameraId = metadata?.cameraId || call.connectionId;
       const label = metadata?.label || "Unknown Camera";
+      const stereoLayout = metadata?.stereoLayout || "mono";
 
       console.log(
-        `[MultiCam Client] Incoming call for camera: ${cameraId} (${label})`
+        `[MultiCam Client] Incoming call for camera: ${cameraId} (${label}) stereo: ${stereoLayout}`
       );
 
       // Store call info
@@ -89,6 +94,7 @@ export function useMultiVideoCallConnectionClientside(
         cameraId,
         label,
         stream: null,
+        stereoLayout,
       };
       incomingCallsRef.current.set(cameraId, callInfo);
 
@@ -194,22 +200,26 @@ export function useMultiVideoCallConnectionClientside(
 
     outgoingCallRef.current = call;
 
-    // The host may respond on this call with their default stream
+    // The host responds with a fake stream on the initial call (just for handshake)
+    // Real camera streams come via separate calls with metadata
     call.on("stream", (stream: MediaStream) => {
-      const trackStates = stream
-        .getVideoTracks()
-        .map((t) => ({
-          id: t.id,
-          enabled: t.enabled,
-          muted: t.muted,
-          readyState: t.readyState,
-        }));
+      const videoTracks = stream.getVideoTracks();
+      const trackStates = videoTracks.map((t) => ({
+        id: t.id,
+        enabled: t.enabled,
+        muted: t.muted,
+        readyState: t.readyState,
+      }));
       console.log(
-        "[MultiCam Client] Received stream on initial call (default camera)",
+        "[MultiCam Client] Received stream on initial call",
         trackStates
       );
-      // Use a unique key for the initial call stream to avoid collisions with
-      // real camera IDs (for example a device ID of "default").
+      // Ignore fake/empty streams - real cameras come via incoming calls with metadata
+      if (videoTracks.length === 0) {
+        console.log("[MultiCam Client] Ignoring empty stream from initial call (host will call back with real cameras)");
+        return;
+      }
+      // Fallback: if host sends a real stream here (legacy behavior), store it
       const defaultCameraId = call.connectionId || "__initial_call__";
       initialCameraKeyRef.current = defaultCameraId;
       const callInfo: IncomingCallInfo = {
@@ -217,6 +227,7 @@ export function useMultiVideoCallConnectionClientside(
         cameraId: defaultCameraId,
         label: "Default Camera",
         stream,
+        stereoLayout: "mono",
       };
       incomingCallsRef.current.set(defaultCameraId, callInfo);
       updateStreamsState();
