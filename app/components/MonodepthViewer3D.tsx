@@ -2,6 +2,7 @@
 
 import { useRef, useMemo, useEffect, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { PivotControls } from "@react-three/drei";
 import * as THREE from "three";
 import { MonodepthLayoutMetadata } from "@/app/hooks/useMonodepthStream";
 
@@ -216,6 +217,61 @@ export function MonodepthViewer3DWithStream({
   }
 
   return <MonodepthViewer3D videoElement={videoElement} layout={layout} {...props} />;
+}
+
+// Wrapper with interactive controls (PivotControls + grabbable handle)
+interface MonodepthViewer3DWithControlsProps extends MonodepthViewer3DWithStreamProps {
+  showControls?: boolean;
+}
+
+export function MonodepthViewer3DWithControls({
+  stream,
+  layout,
+  position = [0, 0, -2],
+  scale = 1,
+  showControls = true,
+  ...props
+}: MonodepthViewer3DWithControlsProps) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  return (
+    <PivotControls
+      anchor={[0, 0, 0]}
+      depthTest={false}
+      scale={0.4}
+      lineWidth={2}
+      visible={showControls}
+    >
+      <group ref={groupRef} position={position}>
+        {/* Grabbable handle - a small sphere that's easy to see and grab in XR */}
+        <mesh position={[0, 0.6 * scale, 0]}>
+          <sphereGeometry args={[0.05, 16, 16]} />
+          <meshStandardMaterial
+            color="#4f46e5"
+            emissive="#4f46e5"
+            emissiveIntensity={0.3}
+            roughness={0.3}
+            metalness={0.7}
+          />
+        </mesh>
+
+        {/* Handle stem connecting to the mesh */}
+        <mesh position={[0, 0.3 * scale, 0]}>
+          <cylinderGeometry args={[0.01, 0.01, 0.6 * scale, 8]} />
+          <meshStandardMaterial color="#6366f1" />
+        </mesh>
+
+        {/* The actual monodepth viewer */}
+        <MonodepthViewer3DWithStream
+          stream={stream}
+          layout={layout}
+          position={[0, 0, 0]}
+          scale={scale}
+          {...props}
+        />
+      </group>
+    </PivotControls>
+  );
 }
 
 // Point cloud version for alternative visualization

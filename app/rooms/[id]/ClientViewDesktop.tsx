@@ -3,7 +3,8 @@ import { DataFrame } from "@/app/teletable.model";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { RemoteCameraStream } from "./useMultiVideoCallConnectionClientside";
 import { Canvas } from "@react-three/fiber";
-import { MonodepthViewer3DWithStream } from "@/app/components/MonodepthViewer3D";
+import { OrbitControls } from "@react-three/drei";
+import { MonodepthViewer3DWithControls } from "@/app/components/MonodepthViewer3D";
 
 export function ClientViewDesktop({
   isInControl,
@@ -233,14 +234,17 @@ function SingleCameraView({
               gl={{ antialias: true, alpha: true }}
             >
               <ambientLight intensity={0.5} />
-              <MonodepthViewer3DWithStream
+              <directionalLight position={[2, 2, 2]} intensity={0.5} />
+              <MonodepthViewer3DWithControls
                 stream={cameraStream.stream}
                 layout={cameraStream.monodepthLayout}
                 scale={viewScale}
                 position={[0, 0, 0]}
                 resolution={128}
                 depthScale={depthScale}
+                showControls={true}
               />
+              <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
             </Canvas>
           </div>
         )}

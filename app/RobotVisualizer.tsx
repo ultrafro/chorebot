@@ -29,7 +29,7 @@ import ControlPointVisualizer from "./ControlPointVisualizer";
 import { Vector3 } from "three";
 import IKRobotFrame from "./IKRobotFrame";
 import Compass from "./Compass";
-import { MonodepthViewer3DWithStream } from "./components/MonodepthViewer3D";
+import { MonodepthViewer3DWithControls } from "./components/MonodepthViewer3D";
 import { MonodepthLayoutMetadata } from "./hooks/useMonodepthStream";
 
 const X_CAMERA_OFFSET = -0.5;
@@ -275,15 +275,16 @@ function RobotVisualizerCore({
 
       <OrbitControlsWithTarget focusedRobot={focusedRobot} />
 
-      {/* Monodepth 3D mesh - positioned behind the robots */}
+      {/* Monodepth 3D mesh - positioned behind the robots with interactive controls */}
       {monodepthStream && monodepthLayout && (
-        <MonodepthViewer3DWithStream
+        <MonodepthViewer3DWithControls
           stream={monodepthStream}
           layout={monodepthLayout}
           position={[0, 1, -2]}
           scale={monodepthViewScale}
           resolution={128}
           depthScale={monodepthDepthScale}
+          showControls={true}
         />
       )}
     </>
