@@ -124,7 +124,7 @@ export function useHostActions(
 
       if (response.ok) {
         console.log("Client request approved:", clientId);
-        // The room data will be updated via the polling mechanism
+        // The room data will be updated via realtime room subscription.
       } else {
         throw new Error(result.error || "Failed to approve client request");
       }
@@ -158,7 +158,7 @@ export function useHostActions(
 
       if (response.ok) {
         console.log("Client request denied:", clientId);
-        // The room data will be updated via the polling mechanism
+        // The room data will be updated via realtime room subscription.
       } else {
         throw new Error(result.error || "Failed to deny client request");
       }
@@ -192,7 +192,7 @@ export function useHostActions(
 
       if (response.ok) {
         console.log("Client control revoked:", clientId);
-        // The room data will be updated via the polling mechanism
+        // The room data will be updated via realtime room subscription.
       } else {
         throw new Error(result.error || "Failed to revoke client control");
       }
@@ -225,7 +225,7 @@ export function useHostActions(
       }
 
       // Password updated successfully
-      // The roomData will be refreshed on the next poll
+      // The room data will be refreshed via realtime room subscription.
     } catch (error) {
       console.error("Error updating password:", error);
       alert(

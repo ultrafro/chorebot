@@ -1,26 +1,15 @@
-import router from "next/router";
 import {
   ClientRoomInfo,
   ClientRoomInfoResponse,
   RoomData,
 } from "./roomUI.model";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { UsePeerJSResult } from "@/app/hooks/usePeerJS";
 import { useControlRequest } from "@/app/hooks/useControlRequest";
-import { useVideoCall } from "@/app/hooks/useVideoCall";
-import { useConnectionRefresh } from "@/app/hooks/useConnectionRefresh";
 import {
-  BothHands,
   DataFrame,
   DefaultDirectValues,
-  DefaultLeftHandDetection,
-  DefaultRightHandDetection,
 } from "@/app/teletable.model";
-import { useProcessHandDetection } from "@/app/useProcessHandDetection";
-import RobotVisualizer from "@/app/RobotVisualizer";
-import HandViewer from "@/app/HandViewer";
-import { useBroadcastHands } from "./useBroadcastHands";
 import { useBroadcastState } from "./useBroadcastState";
 import { usePeer } from "@/app/hooks/usePeer";
 import { useMultiVideoCallConnectionClientside } from "./useMultiVideoCallConnectionClientside";
@@ -28,7 +17,6 @@ import { useDataConnectionClientside } from "./useDataConnectionClientside";
 import { useIsMobile } from "./useIsMobile";
 import { ClientViewMobile } from "./ClientViewMobile";
 import { ClientViewDesktop } from "./ClientViewDesktop";
-import { useAuth } from "@/app/lib/auth";
 import { useAutoRequestControlIfHost } from "./useAutoRequestControlIfHost";
 import { createXRStore, XRStore } from "@react-three/xr";
 import XRPageClient from "./ClientViewXR";

@@ -12,6 +12,7 @@ export interface CameraStreamInfo {
 export interface UsePeerResult {
   peer: Peer | null;
   isConnected: boolean;
+  hasActiveMediaConnections: boolean;
   resetPeer: () => Promise<Peer | null>;
   // Switch a specific camera stream (replaces track in existing connection)
   switchStream: (cameraId: string, stream: MediaStream) => void;
@@ -34,6 +35,7 @@ export function usePeer(
 ): UsePeerResult {
   const [peer, setPeer] = useState<Peer | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [hasActiveMediaConnections, setHasActiveMediaConnections] = useState(false);
 
   // Map of cameraId -> {stream, label} for all cameras we're broadcasting
   const localStreams = useRef<Map<string, CameraStreamInfo>>(new Map());
@@ -41,6 +43,18 @@ export function usePeer(
   // Map of clientPeerId -> Map<cameraId, MediaConnection>
   // Tracks all active media connections per client, per camera
   const clientConnections = useRef<Map<string, Map<string, MediaConnection>>>(new Map());
+
+  // Helper to update hasActiveMediaConnections state
+  const updateMediaConnectionStatus = useCallback(() => {
+    let hasMedia = false;
+    for (const [_, cameraMap] of clientConnections.current) {
+      if (cameraMap.size > 0) {
+        hasMedia = true;
+        break;
+      }
+    }
+    setHasActiveMediaConnections(hasMedia);
+  }, []);
 
   // Initialize with default stream if provided (backward compatibility)
   if (defaultStream && defaultCameraId && !localStreams.current.has(defaultCameraId)) {
@@ -164,6 +178,7 @@ export function usePeer(
 
         // Store this connection
         clientMap.set(cameraId, outgoingCall);
+        updateMediaConnectionStatus();
 
         // Handle call close
         outgoingCall.on("close", () => {
@@ -172,6 +187,7 @@ export function usePeer(
           if (clientMap.size === 0) {
             clientConnections.current.delete(clientPeerId);
           }
+          updateMediaConnectionStatus();
         });
       }
     });
@@ -187,8 +203,9 @@ export function usePeer(
         }
       }
       clientConnections.current.clear();
+      updateMediaConnectionStatus();
     };
-  }, [onData, peer]);
+  }, [onData, peer, updateMediaConnectionStatus]);
 
   // Switch the stream for a specific camera across all connected clients
   const switchStream = useCallback(
@@ -240,6 +257,7 @@ export function usePeer(
             });
 
             cameraMap.set(cameraId, call);
+            updateMediaConnectionStatus();
 
             call.on("close", () => {
               console.log(`Call closed for camera ${cameraId} with client ${clientPeerId}`);
@@ -247,12 +265,13 @@ export function usePeer(
               if (cameraMap.size === 0) {
                 clientConnections.current.delete(clientPeerId);
               }
+              updateMediaConnectionStatus();
             });
           }
         }
       }
     },
-    [peer]
+    [peer, updateMediaConnectionStatus]
   );
 
   // Remove a camera stream from broadcast
@@ -272,8 +291,9 @@ export function usePeer(
           cameraMap.delete(cameraId);
         }
       }
+      updateMediaConnectionStatus();
     },
-    []
+    [updateMediaConnectionStatus]
   );
 
   // Get list of currently broadcasting camera IDs
@@ -309,6 +329,7 @@ export function usePeer(
     return {
       peer,
       isConnected,
+      hasActiveMediaConnections,
       resetPeer,
       switchStream,
       addCameraStream,
@@ -317,7 +338,7 @@ export function usePeer(
       getBroadcastCameraIds,
       getCameraInfo,
     };
-  }, [peer, isConnected, resetPeer, switchStream, addCameraStream, updateStereoLayout, removeCameraStream, getBroadcastCameraIds, getCameraInfo]);
+  }, [peer, isConnected, hasActiveMediaConnections, resetPeer, switchStream, addCameraStream, updateStereoLayout, removeCameraStream, getBroadcastCameraIds, getCameraInfo]);
 
   return result;
 }

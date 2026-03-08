@@ -13,7 +13,6 @@ export function useBasicRoomInfo(
   session: Session | null
 ) {
   const [roomData, setRoomData] = useState<RoomData | null>(null);
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const lastFetchTimeRef = useRef<number>(0);
   const MIN_FETCH_INTERVAL = 200; // Minimum ms between fetches to prevent rapid re-fetches
 
@@ -55,32 +54,30 @@ export function useBasicRoomInfo(
   }, [fetchRoomData]);
 
   // Subscribe to realtime updates
-  const { isSubscribed } = useRoomRealtime({
+  const { isSubscribed: isRealtimeConnected } = useRoomRealtime({
     roomId,
     enabled: isUserAuthenticated(user),
     onRoomChanged: handleRoomChanged,
   });
-
-  // Track realtime connection status
-  useEffect(() => {
-    setIsRealtimeConnected(isSubscribed);
-  }, [isSubscribed]);
 
   // Initial fetch
   useEffect(() => {
     fetchRoomData();
   }, [fetchRoomData]);
 
-  // Fallback polling at a much slower rate (30 seconds) in case realtime misses updates
-  // This is a safety net, not the primary update mechanism
+  // Realtime-first with polling safety net:
+  // - Fast fallback when realtime is disconnected.
+  // - Slow heartbeat when realtime is connected to recover from missed events.
   useEffect(() => {
-    const interval = setInterval(() => {
-      console.log("[useBasicRoomInfo] Fallback poll triggered");
-      fetchRoomData();
-    }, 30000); // 30 second fallback poll
+    const interval = setInterval(
+      () => {
+        fetchRoomData();
+      },
+      isRealtimeConnected ? 15000 : 3000
+    );
 
     return () => clearInterval(interval);
-  }, [fetchRoomData]);
+  }, [fetchRoomData, isRealtimeConnected]);
 
   return {
     roomData,

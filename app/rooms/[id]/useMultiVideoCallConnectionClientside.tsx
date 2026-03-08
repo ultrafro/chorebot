@@ -19,7 +19,7 @@ interface IncomingCallInfo {
 }
 
 const RECONNECT_DELAY = 2000; // ms to wait before reconnecting
-const MAX_RECONNECT_ATTEMPTS = 10;
+const MAX_RECONNECT_DELAY = 10000;
 
 export function useMultiVideoCallConnectionClientside(
   hostPeerId: string,
@@ -46,6 +46,9 @@ export function useMultiVideoCallConnectionClientside(
   const reconnectAttemptsRef = useRef(0);
   // Reconnect timeout ref
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hostChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const suppressReconnectRef = useRef(false);
+  const isUnmountingRef = useRef(false);
 
   // Update host peer ID ref
   useEffect(() => {
@@ -93,6 +96,16 @@ export function useMultiVideoCallConnectionClientside(
   const cleanupConnections = useCallback(() => {
     console.log("[MultiCam Client] Cleaning up existing connections");
 
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (hostChangeTimeoutRef.current) {
+      clearTimeout(hostChangeTimeoutRef.current);
+      hostChangeTimeoutRef.current = null;
+    }
+
     // Close outgoing call
     if (outgoingCallRef.current) {
       try {
@@ -133,7 +146,6 @@ export function useMultiVideoCallConnectionClientside(
     console.log("[MultiCam Client] Initiating connection to host:", currentHostPeerId);
 
     hasInitiatedRef.current = true;
-    reconnectAttemptsRef.current = 0;
 
     // Make initial call to host to signal we want to receive streams
     const fakeStream = createFakeVideoStream();
@@ -160,6 +172,7 @@ export function useMultiVideoCallConnectionClientside(
         readyState: t.readyState,
       }));
       console.log("[MultiCam Client] Received stream on initial call", trackStates);
+      reconnectAttemptsRef.current = 0;
 
       // Ignore fake/empty streams - real cameras come via incoming calls with metadata
       if (videoTracks.length === 0) {
@@ -183,6 +196,9 @@ export function useMultiVideoCallConnectionClientside(
 
     call.on("close", () => {
       console.log("[MultiCam Client] Initial call closed - will attempt reconnect");
+      if (outgoingCallRef.current === call) {
+        outgoingCallRef.current = null;
+      }
       const initialKey = initialCameraKeyRef.current;
       if (initialKey) {
         incomingCallsRef.current.delete(initialKey);
@@ -191,13 +207,20 @@ export function useMultiVideoCallConnectionClientside(
       updateStreamsState();
 
       // Schedule reconnection if we still have a valid host
-      scheduleReconnect();
+      if (!suppressReconnectRef.current && !isUnmountingRef.current) {
+        scheduleReconnect();
+      }
     });
 
     call.on("error", (err) => {
       console.error("[MultiCam Client] Initial call error:", err);
-      // Schedule reconnection on error
-      scheduleReconnect();
+      if (outgoingCallRef.current === call) {
+        outgoingCallRef.current = null;
+      }
+      hasInitiatedRef.current = false;
+      if (!suppressReconnectRef.current && !isUnmountingRef.current) {
+        scheduleReconnect();
+      }
     });
 
     return true;
@@ -209,24 +232,27 @@ export function useMultiVideoCallConnectionClientside(
       clearTimeout(reconnectTimeoutRef.current);
     }
 
-    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      console.log("[MultiCam Client] Max reconnect attempts reached");
-      return;
-    }
-
     if (!hostPeerIdRef.current || !peer.isConnected) {
       console.log("[MultiCam Client] Cannot reconnect - no host or peer not connected");
       return;
     }
 
+    if (suppressReconnectRef.current || isUnmountingRef.current) {
+      return;
+    }
+
+    hasInitiatedRef.current = false;
     reconnectAttemptsRef.current++;
-    const delay = RECONNECT_DELAY * Math.min(reconnectAttemptsRef.current, 5);
+    const delay = Math.min(
+      RECONNECT_DELAY * reconnectAttemptsRef.current,
+      MAX_RECONNECT_DELAY
+    );
 
     console.log(`[MultiCam Client] Scheduling reconnect attempt ${reconnectAttemptsRef.current} in ${delay}ms`);
 
     reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
       console.log("[MultiCam Client] Attempting reconnect...");
-      hasInitiatedRef.current = false;
       initiateConnection();
     }, delay);
   }, [peer.isConnected, initiateConnection]);
@@ -329,16 +355,23 @@ export function useMultiVideoCallConnectionClientside(
   // Detect host peer ID change and reconnect
   useEffect(() => {
     if (!hostPeerId) {
+      suppressReconnectRef.current = true;
+      cleanupConnections();
+      prevHostPeerIdRef.current = null;
       return;
     }
+
+    suppressReconnectRef.current = false;
 
     // If host peer ID changed, we need to reconnect
     if (prevHostPeerIdRef.current && prevHostPeerIdRef.current !== hostPeerId) {
       console.log(`[MultiCam Client] Host peer ID changed from ${prevHostPeerIdRef.current} to ${hostPeerId}, reconnecting...`);
+      suppressReconnectRef.current = true;
       cleanupConnections();
       reconnectAttemptsRef.current = 0;
-      // Small delay to allow cleanup
-      setTimeout(() => {
+      hostChangeTimeoutRef.current = setTimeout(() => {
+        hostChangeTimeoutRef.current = null;
+        suppressReconnectRef.current = false;
         initiateConnection();
       }, 500);
     }
@@ -352,7 +385,7 @@ export function useMultiVideoCallConnectionClientside(
       return;
     }
 
-    if (!hasInitiatedRef.current) {
+    if (!hasInitiatedRef.current && !suppressReconnectRef.current) {
       initiateConnection();
     }
   }, [peer.peer, peer.isConnected, hostPeerId, initiateConnection]);
@@ -363,6 +396,13 @@ export function useMultiVideoCallConnectionClientside(
       console.log("[MultiCam Client] Peer connection dropped, clearing streams");
       hasInitiatedRef.current = false;
       initialCameraKeyRef.current = null;
+      if (outgoingCallRef.current) {
+        outgoingCallRef.current.close();
+        outgoingCallRef.current = null;
+      }
+      incomingCallsRef.current.forEach((callInfo) => {
+        callInfo.call.close();
+      });
       incomingCallsRef.current.clear();
       setRemoteCameraStreams([]);
 
@@ -371,6 +411,11 @@ export function useMultiVideoCallConnectionClientside(
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
+
+      if (hostChangeTimeoutRef.current) {
+        clearTimeout(hostChangeTimeoutRef.current);
+        hostChangeTimeoutRef.current = null;
+      }
     }
   }, [peer.isConnected]);
 
@@ -378,9 +423,15 @@ export function useMultiVideoCallConnectionClientside(
   useEffect(() => {
     return () => {
       console.log("[MultiCam Client] Unmounting, cleaning up all calls");
+      isUnmountingRef.current = true;
+      suppressReconnectRef.current = true;
 
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+
+      if (hostChangeTimeoutRef.current) {
+        clearTimeout(hostChangeTimeoutRef.current);
       }
 
       // Close outgoing call
