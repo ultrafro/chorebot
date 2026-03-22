@@ -146,7 +146,8 @@ export function IKRobotComponent({
 
   useEffect(() => {
     if (!robotObjRef.current || !hasAppliedColor.current) return;
-    applyColor(robotObjRef.current, color);
+    // DISABLED FOR FLICKER DEBUGGING
+    // applyColor(robotObjRef.current, color);
   }, [color]);
 
   useFrame(() => {
@@ -166,7 +167,8 @@ export function IKRobotComponent({
         }
         if (stableFrames.current >= 5) {
           cloneMaterials(robotObjRef.current);
-          applyColor(robotObjRef.current, colorRef.current);
+          // DISABLED FOR FLICKER DEBUGGING
+          // applyColor(robotObjRef.current, colorRef.current);
           hasAppliedColor.current = true;
         }
       }
