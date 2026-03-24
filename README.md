@@ -30,6 +30,9 @@ TeleTable streams your hand movements to dual SO-101 robot arms over a peer-to-p
 
 ---
 
+https://github.com/user-attachments/assets/441e0a2d-05c4-414d-beb6-9bfb4c2a9a8d
+
+
 ## Quick Start
 
 1. Plug in the robot arms and stereo camera via USB
