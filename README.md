@@ -30,59 +30,10 @@ TeleTable streams your hand movements to dual SO-101 robot arms over a peer-to-p
 
 ## Quick Start
 
-### 1. Run the Robot Server
-
-On the machine connected to the robot:
-
-```bash
-cd SimpleRobotServer
-
-# Install uv if you don't have it (Windows PowerShell):
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-
-# Linux/Mac:
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Run the server
-uv run simple-robot-server
-```
-
-First run walks you through robot and port selection, then saves the config. Subsequent runs auto-start.
-
-**No physical robot?** Use simulation mode:
-
-```bash
-uv run simple-robot-server --simulation
-```
-
-### 2. Run the Web App
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-### 3. Set Up Supabase (for room-based sessions)
-
-Create a `.env.local` file:
-
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-Run the schema: `app/api/db/schema.sql` in your Supabase SQL editor.
-
-### 4. Connect
-
-1. Sign in at `/` and create a room
-2. Share the room ID with someone remote
-3. The remote person joins and sees the robot camera feed
-4. They move their hands — the robot moves
+1. Plug in the robot arms and stereo camera via USB
+2. Double-click `start_simple_robot_server.bat`
+3. Go to [teletable.com](https://teletable.com), create a room, and click **Connect to Robot**
+4. On your VR headset, go to [teletable.com](https://teletable.com) with the same account, join the room, and start controlling
 
 ---
 
