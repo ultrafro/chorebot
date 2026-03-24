@@ -141,6 +141,7 @@ export default function LandingPage() {
                 />
                 <div className="px-3 py-2 text-xs text-white/50 font-medium">
                   {vid.label}
+                  <span className="block text-white/30">teleoperated, 2x speed</span>
                 </div>
               </div>
             ))}
